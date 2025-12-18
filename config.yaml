@@ -1,0 +1,11 @@
+db_name: online_market
+db_username: postgres
+db_host: postgres
+db_password: 1
+port: 8989
+jwt_key: osg
+redis_host: 6379
+redis_db: 1
+redis_expires: 10
+sender_email: abdusalomov.adhmabek@gmail.com
+app_password: qsftjewoparywvsa
