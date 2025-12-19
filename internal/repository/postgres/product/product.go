@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"main/internal/entity"
@@ -41,10 +42,10 @@ func IncrementViewCount(ctx context.Context, productId int64, r *Repository) err
 	return err
 }
 
-func (r Repository) GetById(ctx context.Context, id int64) (product.Get, error) {
+func (r Repository) GetById(ctx context.Context, id int64) (product.GetById, error) {
 	IncrementViewCount(ctx, id, &r)
-	var data product.Get
-	log.Println("id", id)
+	var data product.GetById
+
 	query := `
 			SELECT
 			p.id,
@@ -68,18 +69,18 @@ func (r Repository) GetById(ctx context.Context, id int64) (product.Get, error) 
 		`
 	rows, err := r.QueryContext(ctx, query, id)
 	if err != nil {
-		return product.Get{}, err
+		return product.GetById{}, err
 	}
 	defer rows.Close()
 
 	if err := r.ScanRows(ctx, rows, &data); err != nil {
-		return product.Get{}, err
+		return product.GetById{}, err
 	}
 
 	return data, nil
 }
 
-func (r Repository) GetList(ctx context.Context, filter entity.Filter, userId *int64) ([]product.Get, int, error) {
+func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]product.Get, int, error) {
 	var data []product.Get
 	var limitQuery, offsetQuery string
 
@@ -112,8 +113,8 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter, userId *i
 	query := fmt.Sprintf(`
 		SELECT
 			p.id,
-			p.name,
-			p.description,
+			p.name ->> '%s' as name,
+			p.description ->> '%s' as description,
 			p.price,
 			p.stock_quantity,
 			p.rating_avg,
@@ -127,7 +128,7 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter, userId *i
 		%s
 		%s
 		%s
-	`, whereQuery, orderQuery, limitQuery, offsetQuery)
+	`, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
@@ -137,25 +138,6 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter, userId *i
 
 	if err := r.ScanRows(ctx, rows, &data); err != nil {
 		return nil, 0, err
-	}
-
-	wishlistMap := make(map[int64]bool)
-	if userId != nil {
-		wlQuery := `SELECT product_id FROM wishlists WHERE user_id = ? AND status = true AND deleted_at IS NULL`
-		wlRows, err := r.QueryContext(ctx, wlQuery, *userId)
-		if err == nil {
-			defer wlRows.Close()
-			var pid int64
-			for wlRows.Next() {
-				if err := wlRows.Scan(&pid); err == nil {
-					wishlistMap[pid] = true
-				}
-			}
-		}
-	}
-
-	for i := range data {
-		data[i].IsWishlist = wishlistMap[data[i].Id]
 	}
 
 	countQuery := `SELECT COUNT(p.id) FROM products p WHERE p.deleted_at IS NULL AND p.status = true`
@@ -171,4 +153,108 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter, userId *i
 	}
 
 	return data, count, nil
+}
+
+func (r Repository) UpdateProduct(ctx context.Context, productId int, data product.Update, userId int64) error {
+	var product entity.Product
+
+	var nameJSON []byte
+	var descriptionJSON []byte
+	var imagesJSON []byte
+
+	query := `SELECT id, name, description, stock_quantity, status, seller_id, category_id, discount_percent, images , price FROM products WHERE id = ?`
+	if err := r.QueryRowContext(ctx, query, productId).Scan(&product.Id, &nameJSON, &descriptionJSON, &product.StockQuantity, &product.Status, &product.SellerId, &product.CategoryId, &product.DiscountPercent, &imagesJSON, &product.Price); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(nameJSON, &product.Name); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(descriptionJSON, &product.Description); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(imagesJSON, &product.Images); err != nil {
+		return err
+	}
+
+	if data.Name != nil {
+		if data.Name.Uz != nil {
+			product.Name.Uz = data.Name.Uz
+		}
+
+		if data.Name.Ru != nil {
+			product.Name.Ru = data.Name.Ru
+		}
+
+		if data.Name.En != nil {
+			product.Name.En = data.Name.En
+		}
+	}
+
+	if data.Description != nil {
+		if data.Description.Uz != nil {
+			product.Description.Uz = data.Description.Uz
+		}
+
+		if data.Description.Ru != nil {
+			product.Description.Ru = data.Description.Ru
+		}
+
+		if data.Description.En != nil {
+			product.Description.En = data.Description.En
+		}
+	}
+
+	if data.Status != nil {
+		product.Status = *data.Status
+	}
+
+	if data.Price != nil {
+		product.Price = *data.Price
+	}
+
+	if data.DiscountPercent != nil {
+		product.DiscountPercent = *data.DiscountPercent
+	}
+
+	if data.Images != nil {
+		product.Images = *data.Images
+	}
+
+	if data.SellerId != nil {
+		product.SellerId = *data.SellerId
+	}
+
+	if data.CategoryId != nil {
+		product.CategoryId = *data.CategoryId
+	}
+
+	if data.StockQuantity != nil {
+		product.StockQuantity = *data.StockQuantity
+	}
+
+	if data.Images != nil {
+		product.Images = *data.Images
+	}
+
+	var imagesJson string
+	if product.Images != nil {
+		b, err := json.Marshal(product.Images)
+		if err != nil {
+			return err
+		}
+		imagesJson = string(b)
+	} else {
+		imagesJson = "[]"
+	}
+
+	log.Println("✅Images 2:", product.Images)
+	query = `UPDATE products SET name = ?, description = ?, price = ?, discount_percent = ?, images = ?, seller_id = ?, category_id = ?, status = ?, updated_at = NOW(), updated_by = ?, stock_quantity = ? WHERE id = ?`
+	if _, err := r.ExecContext(ctx, query, product.Name, product.Description, product.Price, product.DiscountPercent, imagesJson, product.SellerId, product.CategoryId, product.Status, userId, product.StockQuantity, productId); err != nil {
+		return err
+	}
+
+	return nil
 }

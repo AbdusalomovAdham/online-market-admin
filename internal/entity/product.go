@@ -10,7 +10,8 @@ type Product struct {
 	bun.BaseModel `bun:"table:products"`
 
 	Id              int64   `json:"id" bun:"id,pk,autoincrement"`
-	Description     string  `json:"description" bun:"description" default:""`
+	Description     Name    `json:"description" bun:"description" default:""`
+	Name            Name    `json:"name" bun:"name" default:""`
 	Price           float64 `json:"price" bun:"price" default:"0"`
 	StockQuantity   int64   `json:"stock_quantity" bun:"stock_quantity" default:"0"`
 	RatingAvg       int     `json:"rating_avg" bun:"rating_avg" default:"0"`

@@ -79,7 +79,7 @@ func (s Service) Delete(url string) error {
 	return err
 }
 
-func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string) ([]entity.File, error) {
+func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
 	var links []entity.File
 
 	for _, f := range files {

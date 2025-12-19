@@ -1,4 +1,4 @@
-package products
+package product
 
 import (
 	"context"
@@ -8,8 +8,9 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, data Create, userId int64) (int64, error)
-	GetById(ctx context.Context, id int64) (Get, error)
-	GetList(ctx context.Context, filter entity.Filter, userId *int64) ([]Get, int, error)
+	GetById(ctx context.Context, id int64) (GetById, error)
+	GetList(ctx context.Context, filter entity.Filter) ([]Get, int, error)
+	UpdateProduct(ctx context.Context, productId int, data Update, userId int64) error
 }
 
 type Auth interface {
@@ -17,5 +18,6 @@ type Auth interface {
 }
 
 type File interface {
-	MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string) ([]entity.File, error)
+	MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error)
+	Delete(ctx context.Context, url string) error
 }

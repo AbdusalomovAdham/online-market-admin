@@ -69,18 +69,25 @@ func (uc *UseCase) Delete(ctx context.Context, url string) error {
 	return err
 }
 
-func (uc *UseCase) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string) ([]entity.File, error) {
+func (uc *UseCase) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
+
 	var links []entity.File
-	count := len(files)
-	for i, f := range files {
+
+	var currentID int32 = 1
+	if startID != nil {
+		currentID = *startID
+	}
+
+	for _, f := range files {
 		link, err := uc.Upload(ctx, f, folder)
 		if err != nil {
 			return nil, err
 		}
-		if count > i {
-			link.Id = int32(i + 1)
-			links = append(links, link)
-		}
+
+		link.Id = currentID
+		currentID++
+
+		links = append(links, link)
 	}
 
 	return links, nil

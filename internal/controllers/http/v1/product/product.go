@@ -1,8 +1,7 @@
-package products
+package product
 
 import (
 	"context"
-	"log"
 	"main/internal/entity"
 	product "main/internal/services/product"
 	"net/http"
@@ -20,12 +19,6 @@ func NewController(service product.Service) Controller {
 }
 
 func (as Controller) CreateProduct(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
 	var data product.Create
 	if err := c.ShouldBind(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -39,16 +32,17 @@ func (as Controller) CreateProduct(c *gin.Context) {
 	}
 
 	images := form.File["images"]
-	log.Println("Images uploaded successfully", images)
 	ctx := context.Background()
+	pid := int32(1)
 	if len(images) > 0 {
-		imgFile, err := as.service.MultipleUpload(ctx, images, "../media/products")
+		imgFile, err := as.service.MultipleUpload(ctx, images, "../media/products", &pid)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
 		}
-		data.Images = &imgFile
+		data.Images = imgFile
 	}
+	authHeader := c.GetHeader("Authorization")
 
 	id, err := as.service.CreateProduct(c, data, authHeader)
 	if err != nil {
@@ -80,6 +74,8 @@ func (as Controller) GetById(c *gin.Context) {
 func (as Controller) GetProductsList(c *gin.Context) {
 	filter := entity.Filter{}
 	query := c.Request.URL.Query()
+	lang := c.GetHeader("Accept-Language")
+	filter.Language = &lang
 
 	categoryId := c.Query("category_id")
 	categoryInt, err := strconv.Atoi(categoryId)
@@ -124,8 +120,8 @@ func (as Controller) GetProductsList(c *gin.Context) {
 		filter.Order = &orderQ[0]
 	}
 	ctx := context.Background()
-	authHeader := c.GetHeader("Authorization")
-	list, count, err := as.service.GetList(ctx, filter, authHeader)
+
+	list, count, err := as.service.GetList(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"message": err.Error(),
@@ -139,5 +135,46 @@ func (as Controller) GetProductsList(c *gin.Context) {
 			"results": list,
 			"count":   count,
 		},
+	})
+}
+
+func (as Controller) UpdateProduct(c *gin.Context) {
+	productId := c.Param("id")
+	productIdInt, err := strconv.Atoi(productId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Product id must be number!",
+		})
+		return
+	}
+
+	var data product.Update
+	if err := c.ShouldBind(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	images := form.File["images"]
+	ctx := context.Background()
+
+	authHeader := c.GetHeader("Authorization")
+	err = as.service.UpdateProduct(ctx, productIdInt, data, authHeader, images)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ok!",
 	})
 }

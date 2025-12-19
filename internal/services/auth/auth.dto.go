@@ -1,22 +1,8 @@
 package auth
 
-type Create struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-}
-
-type PhoneRequest struct {
-	PhoneNumber string `json:"phone_number"`
-}
-
-type GetOTP struct {
-	Phone string `json:"phone"`
-	OTP   string `json:"otp"`
-	Token string `json:"token"`
-}
-type CacheOTP struct {
-	Phone string `json:"phone"`
-	OTP   string `json:"otp"`
+type SignIn struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
 type GetInfo struct {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"main/internal/entity"
-	"main/internal/services/auth"
 
 	"github.com/uptrace/bun"
 )
@@ -17,36 +16,24 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r Repository) Create(ctx context.Context, user *auth.Create, phoneNumber string) error {
+func (r Repository) GetByLogin(ctx context.Context, login string) (string, int64, int, error) {
 	var id int64
-	query := `INSERT INTO users (first_name, last_name, created_at) VALUES (?, ?, ?, NOW()) WHERE phone_number = ? RETURNING id`
+	var role int
+	var password sql.NullString
 
-	err := r.QueryRowContext(ctx, query, user.FirstName, user.LastName, phoneNumber).Scan(&id)
+	query := `SELECT id, password, role FROM users WHERE deleted_at IS NULL AND login = ? AND status = true`
+
+	err := r.QueryRowContext(ctx, query, login).Scan(&id, &password, &role)
 	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r Repository) GetOrCreateUserByPhone(ctx context.Context, phone string) (int64, *string, error) {
-	var firstName string
-	var id int64
-	query := `SELECT id, first_name FROM users WHERE phone_number = ?`
-	err := r.QueryRowContext(ctx, query, phone).Scan(&id, &firstName)
-	if err == nil {
-		return id, &firstName, nil
+		return "", 0, 0, err
 	}
 
-	if err != sql.ErrNoRows {
-		return 0, nil, err
-	} else {
-		insertQuery := `INSERT INTO users (phone_number, role, created_at) VALUES (?, ?, NOW()) RETURNING id, first_name`
-		err := r.QueryRowContext(ctx, insertQuery, phone, 3).Scan(&id, &firstName)
-		if err != nil {
-			return 0, nil, err
-		}
+	pw := ""
+	if password.Valid {
+		pw = password.String
 	}
-	return id, nil, nil
+
+	return pw, id, role, nil
 }
 
 func (r Repository) GetById(ctx context.Context, id int) (entity.User, error) {
@@ -57,15 +44,4 @@ func (r Repository) GetById(ctx context.Context, id int) (entity.User, error) {
 		return entity.User{}, err
 	}
 	return detail, nil
-}
-
-func (r Repository) UpdateInfo(ctx context.Context, phoneNumber string, info auth.GetInfo) (int64, error) {
-	var id int64
-	query := `UPDATE users SET first_name = ?, last_name = ? WHERE phone_number = ? RETURNING id`
-	err := r.QueryRowContext(ctx, query, info.FirstName, info.LastName, phoneNumber).Scan(&id)
-	if err != nil {
-		return 0, err
-	}
-
-	return id, nil
 }

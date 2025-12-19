@@ -4,10 +4,13 @@ import (
 	"main/internal/cache"
 	auth_controller "main/internal/controllers/http/v1/auth"
 	cart_controller "main/internal/controllers/http/v1/cart"
+	category_controller "main/internal/controllers/http/v1/category"
 	order_controller "main/internal/controllers/http/v1/order"
 	product_controller "main/internal/controllers/http/v1/product"
 	rating_controller "main/internal/controllers/http/v1/rating"
+	user_controller "main/internal/controllers/http/v1/user"
 	wishlist_controller "main/internal/controllers/http/v1/wishlist"
+
 	auth_middleware "main/internal/middleware/auth"
 
 	"main/internal/pkg/config"
@@ -15,16 +18,20 @@ import (
 
 	auth "main/internal/repository/postgres/auth"
 	"main/internal/repository/postgres/cart"
+	"main/internal/repository/postgres/category"
 	"main/internal/repository/postgres/order"
 	product "main/internal/repository/postgres/product"
 	"main/internal/repository/postgres/rating"
+	"main/internal/repository/postgres/user"
 	wishlist "main/internal/repository/postgres/wishlist"
 
 	auth_service "main/internal/services/auth"
 	cart_service "main/internal/services/cart"
+	category_service "main/internal/services/category"
 	order_service "main/internal/services/order"
 	product_service "main/internal/services/product"
 	rating_service "main/internal/services/rating"
+	user_service "main/internal/services/user"
 	wishlist_service "main/internal/services/wishlist"
 
 	auth_use_case "main/internal/usecase/auth"
@@ -58,6 +65,8 @@ func main() {
 	orderRepository := order.NewRepository(postgresDB)
 	cartRepository := cart.NewRepository(postgresDB)
 	ratingRepository := rating.NewRepository(postgresDB)
+	userRepository := user.NewRepository(postgresDB)
+	categoryRepository := category.NewRepository(postgresDB)
 
 	//usecase
 	authUseCase := auth_use_case.NewUseCase(authRepository)
@@ -71,6 +80,8 @@ func main() {
 	orderService := order_service.NewService(orderRepository, authUseCase)
 	cartService := cart_service.NewService(cartRepository, authUseCase)
 	ratingService := rating_service.NewService(ratingRepository, authUseCase)
+	userService := user_service.NewService(userRepository, authUseCase, fileUseCase)
+	categoryService := category_service.NewService(categoryRepository, authUseCase)
 
 	//controller
 	authController := auth_controller.NewController(authService)
@@ -79,6 +90,8 @@ func main() {
 	orderController := order_controller.NewController(orderService)
 	cartController := cart_controller.NewController(cartService)
 	ratingController := rating_controller.NewController(ratingService)
+	userController := user_controller.NewController(userService)
+	categoryController := category_controller.NewController(categoryService)
 
 	//middleware
 	authMiddleware := auth_middleware.NewMiddleware(authUseCase)
@@ -98,11 +111,31 @@ func main() {
 
 		// #auth
 		// send otp
-		v1.POST("/login/send/otp", authController.SendOtp)
-		// confirm otp
-		v1.POST("/login/confirm/otp", authController.ConfirmOTP)
-		// complete info
-		v1.POST("/login/complete/info", authController.UpdateInfo)
+		v1.POST("/admin/auth/sign-in", authController.SignIn)
+
+		// #user
+		// list
+		v1.GET("/admin/user/list", authMiddleware.AuthMiddleware(), userController.AdminGetList)
+		// get by id
+		v1.GET("/admin/user/:id", authMiddleware.AuthMiddleware(), userController.AdminGetById)
+		// create
+		v1.POST("/admin/user/create", authMiddleware.AuthMiddleware(), userController.AdminCreateUser)
+		//update
+		v1.PATCH("/admin/user/:id", authMiddleware.AuthMiddleware(), userController.AdminUpdateUser)
+		//delete
+		v1.DELETE("/admin/user/delete/:id", authMiddleware.AuthMiddleware(), userController.AdminDeleteUser)
+
+		// #category
+		// list
+		v1.GET("/admin/category/list", authMiddleware.AuthMiddleware(), categoryController.AdminGetCategoryList)
+		// get by id
+		v1.GET("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminGetCategoryById)
+		// create
+		v1.POST("/admin/category/create", authMiddleware.AuthMiddleware(), categoryController.AdminCreateCategory)
+		// update
+		v1.PATCH("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminUpdateCategory)
+		// delete
+		v1.DELETE("/admin/category/delete/:id", authMiddleware.AuthMiddleware(), categoryController.AdminDeleteCategory)
 
 		// #wishlist
 		// list
@@ -114,11 +147,15 @@ func main() {
 
 		//  #products
 		// create
-		v1.POST("/product/create", authMiddleware.AuthMiddleware(), productController.CreateProduct)
+		v1.POST("/admin/product/create", authMiddleware.AuthMiddleware(), productController.CreateProduct)
 		// get by id
-		v1.GET("/product/:id", authMiddleware.AuthMiddleware(), productController.GetById)
+		v1.GET("/admin/product/:id", authMiddleware.AuthMiddleware(), productController.GetById)
 		// list
-		v1.GET("/products", productController.GetProductsList)
+		v1.GET("/admin/products", productController.GetProductsList)
+		// update
+		v1.PATCH("/admin/product/update/:id", authMiddleware.AuthMiddleware(), productController.UpdateProduct)
+		// // delete
+		// v1.DELETE("/admin/product/delete/:id", authMiddleware.AuthMiddleware(), productController.DeleteProduct)
 
 		// #orders
 		// create

@@ -75,7 +75,7 @@ func (uc UseCase) Delete(ctx context.Context, url string) error {
 	return err
 }
 
-func (uc UseCase) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string) ([]entity.File, error) {
+func (uc UseCase) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
 	var links []entity.File
 
 	for _, f := range files {

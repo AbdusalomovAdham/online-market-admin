@@ -2,7 +2,7 @@ db_name: online_market
 db_username: postgres
 db_host: postgres
 db_password: 1
-port: 8989
+port: 8980
 jwt_key: osg
 redis_host: 6379
 redis_db: 1

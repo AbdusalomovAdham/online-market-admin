@@ -16,4 +16,5 @@ type Filter struct {
 	PopularOnly  *bool
 	Status       *bool
 	Order        *string
+	Language     *string `default:"uz"`
 }
