@@ -21,7 +21,6 @@ func NewRepository(DB *bun.DB) *Repository {
 }
 
 func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetList, error) {
-	log.Println("userId", userId)
 	query := `
         SELECT
             wl.id AS wishlist_id,
@@ -119,7 +118,6 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 }
 
 func (r *Repository) Delete(ctx context.Context, wishlistItemId, customerId int64) error {
-	log.Println("wishlistItemId", wishlistItemId, "customerId", customerId)
 	query := `
 		UPDATE wishlist_items wi
 		SET deleted_at = NOW(), deleted_by = ?

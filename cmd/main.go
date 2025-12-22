@@ -6,6 +6,8 @@ import (
 	cart_controller "main/internal/controllers/http/v1/cart"
 	category_controller "main/internal/controllers/http/v1/category"
 	order_controller "main/internal/controllers/http/v1/order"
+	order_status_controller "main/internal/controllers/http/v1/order_status"
+	payment_status_controller "main/internal/controllers/http/v1/payment_status"
 	product_controller "main/internal/controllers/http/v1/product"
 	rating_controller "main/internal/controllers/http/v1/rating"
 	user_controller "main/internal/controllers/http/v1/user"
@@ -16,19 +18,23 @@ import (
 	"main/internal/pkg/config"
 	"main/internal/pkg/postgres"
 
-	auth "main/internal/repository/postgres/auth"
+	"main/internal/repository/postgres/auth"
 	"main/internal/repository/postgres/cart"
 	"main/internal/repository/postgres/category"
 	"main/internal/repository/postgres/order"
-	product "main/internal/repository/postgres/product"
+	"main/internal/repository/postgres/order_status"
+	"main/internal/repository/postgres/payment_status"
+	"main/internal/repository/postgres/product"
 	"main/internal/repository/postgres/rating"
 	"main/internal/repository/postgres/user"
-	wishlist "main/internal/repository/postgres/wishlist"
+	"main/internal/repository/postgres/wishlist"
 
 	auth_service "main/internal/services/auth"
 	cart_service "main/internal/services/cart"
 	category_service "main/internal/services/category"
 	order_service "main/internal/services/order"
+	order_status_service "main/internal/services/order_status"
+	payment_status_service "main/internal/services/payment_status"
 	product_service "main/internal/services/product"
 	rating_service "main/internal/services/rating"
 	user_service "main/internal/services/user"
@@ -67,6 +73,8 @@ func main() {
 	ratingRepository := rating.NewRepository(postgresDB)
 	userRepository := user.NewRepository(postgresDB)
 	categoryRepository := category.NewRepository(postgresDB)
+	orderStatusRepository := order_status.NewRepository(postgresDB)
+	paymentStatusRepository := payment_status.NewRepository(postgresDB)
 
 	//usecase
 	authUseCase := auth_use_case.NewUseCase(authRepository)
@@ -82,6 +90,8 @@ func main() {
 	ratingService := rating_service.NewService(ratingRepository, authUseCase)
 	userService := user_service.NewService(userRepository, authUseCase, fileUseCase)
 	categoryService := category_service.NewService(categoryRepository, authUseCase)
+	orderStatusService := order_status_service.NewService(orderStatusRepository, authUseCase)
+	paymenStatusService := payment_status_service.NewService(paymentStatusRepository, authUseCase)
 
 	//controller
 	authController := auth_controller.NewController(authService)
@@ -92,6 +102,8 @@ func main() {
 	ratingController := rating_controller.NewController(ratingService)
 	userController := user_controller.NewController(userService)
 	categoryController := category_controller.NewController(categoryService)
+	orderStatusController := order_status_controller.NewController(orderStatusService)
+	paymentStatusController := payment_status_controller.NewController(paymenStatusService)
 
 	//middleware
 	authMiddleware := auth_middleware.NewMiddleware(authUseCase)
@@ -155,15 +167,17 @@ func main() {
 		// update
 		v1.PATCH("/admin/product/update/:id", authMiddleware.AuthMiddleware(), productController.UpdateProduct)
 		// // delete
-		// v1.DELETE("/admin/product/delete/:id", authMiddleware.AuthMiddleware(), productController.DeleteProduct)
+		v1.DELETE("/admin/product/delete/:id", authMiddleware.AuthMiddleware(), productController.AdminDeleteProduct)
 
 		// #orders
 		// create
-		v1.POST("/order/create", authMiddleware.AuthMiddleware(), orderController.CreateOrder)
+		// v1.POST("/order/create", authMiddleware.AuthMiddleware(), orderController.CreateOrder)
 		// list
 		v1.GET("/order/list", authMiddleware.AuthMiddleware(), orderController.GetOrderList)
 		// get by id
 		v1.GET("/order/:id", authMiddleware.AuthMiddleware(), orderController.GetOrderById)
+		// update
+		// v1.PATCH("/order/update/:id", authMiddleware.AuthMiddleware(), orderController.UpdateOrder)
 		// delete
 		v1.DELETE("/order/delete/:id", authMiddleware.AuthMiddleware(), orderController.DeleteOrder)
 
@@ -181,6 +195,29 @@ func main() {
 		// create
 		v1.POST("/create/rating/:id", authMiddleware.AuthMiddleware(), ratingController.CreateRating)
 
+		// #order status
+		// list
+		v1.GET("/admin/order-status/list", authMiddleware.AuthMiddleware(), orderStatusController.AdminGetOrderStatusList)
+		// get by id
+		v1.GET("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminGetOrderStatusById)
+		// create
+		v1.POST("/admin/order-status/create", authMiddleware.AuthMiddleware(), orderStatusController.AdminCreateOrderStatus)
+		// update
+		v1.PATCH("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminUpdateOrderStatus)
+		// delete
+		v1.DELETE("/admin/order-status/delete/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminDeleteOrderStatus)
+
+		// #payment status
+		// list
+		v1.GET("/admin/payment-status/list", authMiddleware.AuthMiddleware(), paymentStatusController.AdminGetPaymentStatusList)
+		// get by id
+		v1.GET("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminGetPaymentStatusById)
+		// create
+		v1.POST("/admin/payment-status/create", authMiddleware.AuthMiddleware(), paymentStatusController.AdminCreatePaymentStatus)
+		// update
+		v1.PATCH("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminUpdatePaymentStatus)
+		// delete
+		v1.DELETE("/admin/payment-status/delete/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminDeletePaymentStatus)
 	}
 
 	r.Run(serverPost)

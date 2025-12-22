@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"main/internal/entity"
 	product "main/internal/services/product"
 	"strings"
@@ -162,7 +161,7 @@ func (r Repository) UpdateProduct(ctx context.Context, productId int, data produ
 	var descriptionJSON []byte
 	var imagesJSON []byte
 
-	query := `SELECT id, name, description, stock_quantity, status, seller_id, category_id, discount_percent, images , price FROM products WHERE id = ?`
+	query := `SELECT id, name, description, stock_quantity, status, seller_id, category_id, discount_percent, images , price FROM products WHERE id = ?  AND deleted_at IS NULL`
 	if err := r.QueryRowContext(ctx, query, productId).Scan(&product.Id, &nameJSON, &descriptionJSON, &product.StockQuantity, &product.Status, &product.SellerId, &product.CategoryId, &product.DiscountPercent, &imagesJSON, &product.Price); err != nil {
 		return err
 	}
@@ -250,11 +249,56 @@ func (r Repository) UpdateProduct(ctx context.Context, productId int, data produ
 		imagesJson = "[]"
 	}
 
-	log.Println("✅Images 2:", product.Images)
-	query = `UPDATE products SET name = ?, description = ?, price = ?, discount_percent = ?, images = ?, seller_id = ?, category_id = ?, status = ?, updated_at = NOW(), updated_by = ?, stock_quantity = ? WHERE id = ?`
+	query = `UPDATE products SET name = ?, description = ?, price = ?, discount_percent = ?, images = ?, seller_id = ?, category_id = ?, status = ?, updated_at = NOW(), updated_by = ?, stock_quantity = ? WHERE id = ? AND deleted_at IS NULL`
 	if _, err := r.ExecContext(ctx, query, product.Name, product.Description, product.Price, product.DiscountPercent, imagesJson, product.SellerId, product.CategoryId, product.Status, userId, product.StockQuantity, productId); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (r Repository) Delete(ctx context.Context, productId, userId int64) error {
+	query := `UPDATE products SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL `
+	if _, err := r.ExecContext(ctx, query, userId, productId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r Repository) GetByIdDetail(ctx context.Context, id int64) (product.GetById, error) {
+	var data product.GetById
+
+	query := `
+			SELECT
+			p.id,
+			p.name,
+			p.description,
+			p.price,
+			p.stock_quantity,
+			p.rating_avg,
+			p.seller_id,
+			p.category_id,
+			p.views_count,
+			p.discount_percent,
+			p.images,
+			p.created_at,
+			u.first_name,
+			u.last_name,
+			u.avatar
+			FROM products p
+			LEFT JOIN users u ON p.seller_id = u.id
+			WHERE p.id = ? AND p.deleted_at IS NULL
+		`
+	rows, err := r.QueryContext(ctx, query, id)
+	if err != nil {
+		return product.GetById{}, err
+	}
+	defer rows.Close()
+
+	if err := r.ScanRows(ctx, rows, &data); err != nil {
+		return product.GetById{}, err
+	}
+
+	return data, nil
 }

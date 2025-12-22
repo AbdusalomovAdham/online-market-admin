@@ -52,7 +52,7 @@ func (s Service) UpdateProduct(ctx context.Context, productId int, data Update, 
 		return err
 	}
 
-	oldProduct, err := s.repo.GetById(ctx, int64(productId))
+	oldProduct, err := s.repo.GetByIdDetail(ctx, int64(productId))
 	if err != nil {
 		return err
 	}
@@ -108,4 +108,13 @@ func (s Service) UpdateProduct(ctx context.Context, productId int, data Update, 
 	}
 
 	return s.repo.UpdateProduct(ctx, productId, data, isValidToken.Id)
+}
+
+func (s Service) AdminDeleteProduct(ctx context.Context, productId int64, authHeader string) error {
+	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.Delete(ctx, productId, isValidToken.Id)
 }

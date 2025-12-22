@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"main/internal/entity"
 	"main/internal/services/user"
 	"strings"
@@ -23,7 +22,6 @@ func NewRepository(DB *bun.DB) *Repository {
 
 func (r Repository) Create(ctx context.Context, data user.Create, adminId int64, birthTime time.Time) (int64, error) {
 	var id int64
-	log.Println(data.FirstName)
 	query := `
 		INSERT INTO users
 			(avatar, first_name, last_name, phone_number, password, login, birth_date, email, role, region_id, district_id, created_by, created_at)

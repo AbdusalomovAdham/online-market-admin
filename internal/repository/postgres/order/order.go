@@ -74,7 +74,6 @@ func (r *Repository) Create(ctx context.Context, order order.Create, customerId 
 			) VALUES (?, ?, ?, ?, ?, ?, ?)`
 
 	for _, item := range order.Items {
-		log.Println("item", item.Price)
 		total := item.Price * float64(item.Quantity)
 		_, err := r.ExecContext(
 			ctx,

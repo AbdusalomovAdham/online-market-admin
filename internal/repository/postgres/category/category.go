@@ -22,7 +22,7 @@ func NewRepository(DB *bun.DB) *Repository {
 func (r *Repository) Create(ctx context.Context, category category.Create, userId int64) (int64, error) {
 	var id int64
 
-	query := `INSERT INTO categories (name, created_by, status, parent_id) VALUES (?, ?, ?, ?) RETURNING id`
+	query := `INSERT INTO categories (name, created_by, status, parent_id) VALUES (?, ?, COALESCE(?, TRUE), ?) RETURNING id`
 	if err := r.QueryRowContext(ctx, query, category.Name, userId, category.Status, category.ParentId).Scan(&id); err != nil {
 		return 0, err
 	}
@@ -43,7 +43,7 @@ func (r *Repository) Delete(ctx context.Context, id int64, userId int64) error {
 func (r *Repository) GetById(ctx context.Context, id int64) (category.CategoryById, error) {
 	var detail category.CategoryById
 
-	query := `SELECT id, status, created_at, name FROM categories WHERE id = ?`
+	query := `SELECT id, status, created_at, name FROM categories WHERE id = ? AND deleted_at is NULL`
 
 	rows, err := r.QueryContext(ctx, query, id)
 	if err != nil {
@@ -124,7 +124,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 func (r *Repository) Update(ctx context.Context, id int64, data category.Update, userId int64) error {
 	var category entity.Category
 	var nameJSON []byte
-	query := `SELECT id, name, status, updated_at, updated_by FROM categories WHERE id = ?`
+	query := `SELECT id, name, status, updated_at, updated_by FROM categories WHERE id = ? AND deleted_at is NULL`
 	if err := r.QueryRowContext(ctx, query, id).Scan(&category.Id, &nameJSON, &category.Status, &category.UpdatedAt, &category.UpdatedBy); err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (r *Repository) Update(ctx context.Context, id int64, data category.Update,
 		category.Status = data.Status
 	}
 
-	query = `UPDATE categories SET name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ?`
+	query = `UPDATE categories SET name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND deleted_at is NULL`
 	if _, err := r.ExecContext(ctx, query, category.Name, category.Status, userId, id); err != nil {
 		return err
 	}

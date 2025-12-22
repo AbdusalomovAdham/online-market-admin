@@ -178,3 +178,28 @@ func (as Controller) UpdateProduct(c *gin.Context) {
 		"message": "ok!",
 	})
 }
+
+func (as Controller) AdminDeleteProduct(c *gin.Context) {
+	productId := c.Param("id")
+	productIdInt, err := strconv.Atoi(productId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Product id must be number!",
+		})
+		return
+	}
+
+	ctx := context.Background()
+	authHeader := c.GetHeader("Authorization")
+	err = as.service.AdminDeleteProduct(ctx, int64(productIdInt), authHeader)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "ok!",
+	})
+}

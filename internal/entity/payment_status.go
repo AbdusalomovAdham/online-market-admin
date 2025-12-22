@@ -6,13 +6,12 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type Category struct {
-	bun.BaseModel `bun:"table:categories"`
+type PaymentStatus struct {
+	bun.BaseModel `bun:"table:payment_statuses"`
 
-	Id       int64  `json:"id" bun:"id,pk,autoincrement"`
-	Name     Name   `json:"name" bun:"name"`
-	ParentId *int64 `json:"parent_id" bun:"parent_id"`
-	Status   *bool  `json:"status" bun:"status"`
+	Id     int   `json:"id" bun:"id,pk,autoincrement"`
+	Name   Name  `json:"name" bun:"name"`
+	Status *bool `json:"status" bun:"status"`
 
 	CreatedAt time.Time  `json:"created_at" bun:"created_at"`
 	CreatedBy *string    `json:"created_by" bun:"created_by"`
