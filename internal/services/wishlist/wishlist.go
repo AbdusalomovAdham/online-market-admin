@@ -16,18 +16,18 @@ func NewService(repo Repository, auth Auth) *Service {
 	}
 }
 
-func (s *Service) GetList(ctx context.Context, authHeader string) ([]GetList, error) {
+func (s *Service) GetList(ctx context.Context, authHeader string) ([]GetList, int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	list, err := s.repo.GetList(ctx, isValidToken.Id)
+	list, count, err := s.repo.GetList(ctx, isValidToken.Id)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return list, nil
+	return list, count, nil
 }
 
 func (s *Service) Create(ctx context.Context, productId Create, authHeader string) (int64, error) {

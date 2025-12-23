@@ -6,8 +6,8 @@ import (
 	"github.com/uptrace/bun"
 )
 
-type PaymentStatus struct {
-	bun.BaseModel `bun:"table:payment_statuses"`
+type Payment struct {
+	bun.BaseModel `bun:"table:payments"`
 
 	Id     int   `json:"id" bun:"id,pk,autoincrement"`
 	Name   Name  `json:"name" bun:"name"`

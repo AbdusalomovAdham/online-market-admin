@@ -114,7 +114,6 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	defer countRows.Close()
 
 	count := 0
-
 	if err = r.ScanRows(ctx, countRows, &count); err != nil {
 		return nil, 0, fmt.Errorf("select category count: %w", err)
 	}

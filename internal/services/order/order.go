@@ -23,13 +23,13 @@ func (s *Service) Create(ctx context.Context, order Create, authHeader string) e
 	return s.repo.Create(ctx, order, isValidToken.Id)
 }
 
-func (s *Service) GetList(ctx context.Context, authHeader string) ([]Get, error) {
+func (s *Service) GetList(ctx context.Context, authHeader string, lang string) ([]Get, int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return s.repo.GetList(ctx, isValidToken.Id)
+	return s.repo.GetList(ctx, isValidToken.Id, lang)
 }
 
 func (s *Service) GetById(ctx context.Context, orderId int64, authHeader string) (Get, error) {

@@ -60,6 +60,10 @@ func (r *Repository) GetById(ctx context.Context, id int64) (order_status.OrderS
 }
 
 func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang string) ([]order_status.Get, int, error) {
+	if lang == "" {
+		lang = "uz"
+	}
+
 	var list []order_status.Get
 	var limitQuery, offsetQuery string
 

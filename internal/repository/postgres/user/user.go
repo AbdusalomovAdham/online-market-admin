@@ -53,7 +53,7 @@ func (r Repository) Create(ctx context.Context, data user.Create, adminId int64,
 	return id, nil
 }
 
-func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Get, int, error) {
+func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Get, int64, error) {
 	var users []user.Get
 	var limitQuery, offsetQuery string
 
@@ -130,7 +130,7 @@ func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Ge
 	}
 	defer countRows.Close()
 
-	count := 0
+	count := int64(0)
 
 	if err = r.ScanRows(ctx, countRows, &count); err != nil {
 		return nil, 0, fmt.Errorf("select user count: %w", err)

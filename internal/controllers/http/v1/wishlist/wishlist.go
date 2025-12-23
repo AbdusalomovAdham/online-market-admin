@@ -27,13 +27,13 @@ func (as Controller) WishList(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	wishlistItems, err := as.service.GetList(ctx, authHeader)
+	wishlistItems, count, err := as.service.GetList(ctx, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": wishlistItems})
+	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": wishlistItems, "count": count})
 }
 
 func (as Controller) Create(c *gin.Context) {

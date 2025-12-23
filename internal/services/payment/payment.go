@@ -1,4 +1,4 @@
-package payment_status
+package payment
 
 import (
 	"context"

@@ -1,11 +1,11 @@
-package payment_status
+package payment
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"main/internal/entity"
-	"main/internal/services/payment_status"
+	"main/internal/services/payment"
 	"strings"
 
 	"github.com/uptrace/bun"
@@ -19,10 +19,10 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r *Repository) Create(ctx context.Context, paymentStatus payment_status.Create, adminId int64) (int64, error) {
+func (r *Repository) Create(ctx context.Context, paymentStatus payment.Create, adminId int64) (int64, error) {
 	var id int64
 
-	query := `INSERT INTO payment_statuses (name, created_by, status) VALUES (?, ?, COALESCE(?, TRUE)) RETURNING id`
+	query := `INSERT INTO payments (name, created_by, status) VALUES (?, ?, COALESCE(?, TRUE)) RETURNING id`
 	if err := r.QueryRowContext(ctx, query, paymentStatus.Name, adminId, paymentStatus.Status).Scan(&id); err != nil {
 		return 0, err
 	}
@@ -31,7 +31,7 @@ func (r *Repository) Create(ctx context.Context, paymentStatus payment_status.Cr
 
 func (r *Repository) Delete(ctx context.Context, paymenStatusId int64, adminId int64) error {
 
-	query := `UPDATE payment_statuses SET deleted_at = NOW(), deleted_by = ? WHERE id = ? RETURNING id`
+	query := `UPDATE payments SET deleted_at = NOW(), deleted_by = ? WHERE id = ? RETURNING id`
 	_, err := r.ExecContext(ctx, query, adminId, paymenStatusId)
 	if err != nil {
 		return err
@@ -39,13 +39,13 @@ func (r *Repository) Delete(ctx context.Context, paymenStatusId int64, adminId i
 	return nil
 }
 
-func (r *Repository) GetById(ctx context.Context, paymentStatusid int64) (payment_status.PaymentStatusById, error) {
+func (r *Repository) GetById(ctx context.Context, paymentStatusid int64) (payment.PaymentStatusById, error) {
 
-	var detail payment_status.PaymentStatusById
+	var detail payment.PaymentStatusById
 
 	query := `
         SELECT id, status, created_at, name
-        FROM payment_statuses
+        FROM payments
         WHERE id = ? AND deleted_at IS NULL
     `
 
@@ -53,14 +53,18 @@ func (r *Repository) GetById(ctx context.Context, paymentStatusid int64) (paymen
 		Scan(&detail.Id, &detail.Status, &detail.CreatedAt, &detail.Name)
 
 	if err != nil {
-		return payment_status.PaymentStatusById{}, err
+		return payment.PaymentStatusById{}, err
 	}
 
 	return detail, nil
 }
 
-func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang string) ([]payment_status.Get, int, error) {
-	var list []payment_status.Get
+func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang string) ([]payment.Get, int, error) {
+	if lang == "" {
+		lang = "uz"
+	}
+
+	var list []payment.Get
 	var limitQuery, offsetQuery string
 
 	whereQuery := "WHERE os.deleted_at IS NULL"
@@ -92,7 +96,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	        os.name->>'%s' as name,
 	        os.status,
 	        os.created_at
-	    FROM payment_statuses os
+	    FROM payments os
 	    %s %s %s %s
 	`, lang, whereQuery, orderQuery, limitQuery, offsetQuery)
 
@@ -107,7 +111,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 		return nil, 0, err
 	}
 
-	countQuery := `SELECT COUNT(os.id) FROM payment_statuses os WHERE os.deleted_at IS NULL`
+	countQuery := `SELECT COUNT(os.id) FROM payments os WHERE os.deleted_at IS NULL`
 
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {
@@ -123,10 +127,10 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	return list, count, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id int64, data payment_status.Update, userId int64) error {
-	var paymentStatus entity.PaymentStatus
+func (r *Repository) Update(ctx context.Context, id int64, data payment.Update, userId int64) error {
+	var paymentStatus entity.Payment
 	var nameJSON []byte
-	query := `SELECT id, name, status, updated_at, updated_by FROM payment_statuses WHERE id = ? AND deleted_at is NULL`
+	query := `SELECT id, name, status, updated_at, updated_by FROM payments WHERE id = ? AND deleted_at is NULL`
 	if err := r.QueryRowContext(ctx, query, id).Scan(&paymentStatus.Id, &nameJSON, &paymentStatus.Status, &paymentStatus.UpdatedAt, &paymentStatus.UpdatedBy); err != nil {
 		return err
 	}
@@ -153,7 +157,7 @@ func (r *Repository) Update(ctx context.Context, id int64, data payment_status.U
 		paymentStatus.Status = data.Status
 	}
 
-	query = `UPDATE payment_statuses SET name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND deleted_at is NULL`
+	query = `UPDATE payments SET name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND deleted_at is NULL`
 	if _, err := r.ExecContext(ctx, query, paymentStatus.Name, paymentStatus.Status, userId, id); err != nil {
 		return err
 	}

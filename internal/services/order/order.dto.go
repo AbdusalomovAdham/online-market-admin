@@ -5,11 +5,11 @@ import (
 )
 
 type Create struct {
-	OrderStatus   string  `json:"order_status"`
-	PaymentStatus string  `json:"payment_status"`
-	DeliveryDate  string  `json:"delivery_date"`
-	TotalAmount   float64 `json:"total_amount"`
-	Items         []Item  `json:"items"`
+	OrderStatus  string  `json:"order_status"`
+	PaymentId    string  `json:"payment_id"`
+	DeliveryDate string  `json:"delivery_date"`
+	TotalAmount  float64 `json:"total_amount"`
+	Items        []Item  `json:"items"`
 }
 
 type Item struct {
@@ -20,6 +20,8 @@ type Item struct {
 
 type Get struct {
 	Id            int64      `json:"id"`
+	OrderStatusId int        `json:"order_status_id"`
+	PaymentId     int        `json:"payment_id"`
 	OrderStatus   string     `json:"order_status"`
 	PaymentStatus string     `json:"payment_status"`
 	DeliveryDate  string     `json:"delivery_date"`
@@ -33,6 +35,6 @@ type GetItems struct {
 	Description string         `json:"description"`
 	Images      *[]entity.File `json:"images"`
 	Quantity    int            `json:"quantity"`
-	Rating      int8           `json:"rating"`
+	Rating      float32        `json:"rating"`
 	Price       float64        `json:"price"`
 }

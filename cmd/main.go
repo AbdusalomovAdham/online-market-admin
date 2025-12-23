@@ -7,9 +7,8 @@ import (
 	category_controller "main/internal/controllers/http/v1/category"
 	order_controller "main/internal/controllers/http/v1/order"
 	order_status_controller "main/internal/controllers/http/v1/order_status"
-	payment_status_controller "main/internal/controllers/http/v1/payment_status"
+	payment_controller "main/internal/controllers/http/v1/payment"
 	product_controller "main/internal/controllers/http/v1/product"
-	rating_controller "main/internal/controllers/http/v1/rating"
 	user_controller "main/internal/controllers/http/v1/user"
 	wishlist_controller "main/internal/controllers/http/v1/wishlist"
 
@@ -23,9 +22,8 @@ import (
 	"main/internal/repository/postgres/category"
 	"main/internal/repository/postgres/order"
 	"main/internal/repository/postgres/order_status"
-	"main/internal/repository/postgres/payment_status"
+	"main/internal/repository/postgres/payment"
 	"main/internal/repository/postgres/product"
-	"main/internal/repository/postgres/rating"
 	"main/internal/repository/postgres/user"
 	"main/internal/repository/postgres/wishlist"
 
@@ -34,9 +32,8 @@ import (
 	category_service "main/internal/services/category"
 	order_service "main/internal/services/order"
 	order_status_service "main/internal/services/order_status"
-	payment_status_service "main/internal/services/payment_status"
+	payment_service "main/internal/services/payment"
 	product_service "main/internal/services/product"
-	rating_service "main/internal/services/rating"
 	user_service "main/internal/services/user"
 	wishlist_service "main/internal/services/wishlist"
 
@@ -70,11 +67,10 @@ func main() {
 	productRepository := product.NewRepository(postgresDB)
 	orderRepository := order.NewRepository(postgresDB)
 	cartRepository := cart.NewRepository(postgresDB)
-	ratingRepository := rating.NewRepository(postgresDB)
 	userRepository := user.NewRepository(postgresDB)
 	categoryRepository := category.NewRepository(postgresDB)
 	orderStatusRepository := order_status.NewRepository(postgresDB)
-	paymentStatusRepository := payment_status.NewRepository(postgresDB)
+	paymentStatusRepository := payment.NewRepository(postgresDB)
 
 	//usecase
 	authUseCase := auth_use_case.NewUseCase(authRepository)
@@ -87,11 +83,10 @@ func main() {
 	productService := product_service.NewService(productRepository, authUseCase, fileUseCase)
 	orderService := order_service.NewService(orderRepository, authUseCase)
 	cartService := cart_service.NewService(cartRepository, authUseCase)
-	ratingService := rating_service.NewService(ratingRepository, authUseCase)
 	userService := user_service.NewService(userRepository, authUseCase, fileUseCase)
 	categoryService := category_service.NewService(categoryRepository, authUseCase)
 	orderStatusService := order_status_service.NewService(orderStatusRepository, authUseCase)
-	paymenStatusService := payment_status_service.NewService(paymentStatusRepository, authUseCase)
+	paymenStatusService := payment_service.NewService(paymentStatusRepository, authUseCase)
 
 	//controller
 	authController := auth_controller.NewController(authService)
@@ -99,11 +94,10 @@ func main() {
 	productController := product_controller.NewController(productService)
 	orderController := order_controller.NewController(orderService)
 	cartController := cart_controller.NewController(cartService)
-	ratingController := rating_controller.NewController(ratingService)
 	userController := user_controller.NewController(userService)
 	categoryController := category_controller.NewController(categoryService)
 	orderStatusController := order_status_controller.NewController(orderStatusService)
-	paymentStatusController := payment_status_controller.NewController(paymenStatusService)
+	paymentStatusController := payment_controller.NewController(paymenStatusService)
 
 	//middleware
 	authMiddleware := auth_middleware.NewMiddleware(authUseCase)
@@ -190,10 +184,6 @@ func main() {
 		v1.DELETE("/cart/item/delete/:id", authMiddleware.AuthMiddleware(), cartController.DeleteCartItem)
 		// get cart list
 		v1.GET("/cart/list", authMiddleware.AuthMiddleware(), cartController.GetCartList)
-
-		// #rating
-		// create
-		v1.POST("/create/rating/:id", authMiddleware.AuthMiddleware(), ratingController.CreateRating)
 
 		// #order status
 		// list

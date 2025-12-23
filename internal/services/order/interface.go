@@ -7,7 +7,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, order Create, userId int64) error
-	GetList(ctx context.Context, userId int64) ([]Get, error)
+	GetList(ctx context.Context, userId int64, lang string) ([]Get, int64, error)
 	GetById(ctx context.Context, orderId, userId int64) (Get, error)
 	Delete(ctx context.Context, orderId int64, userId int64) error
 }

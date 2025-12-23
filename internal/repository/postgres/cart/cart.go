@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"main/internal/entity"
 	"main/internal/services/cart"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
@@ -178,10 +180,36 @@ func (r Repository) DeleteCartItem(ctx context.Context, cartItemId int64, custom
 	return nil
 }
 
-func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get, error) {
-	query := `
+func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]cart.Get, int64, error) {
+	// var data []product.Get
+	var limitQuery, offsetQuery string
+
+	whereQuery := "WHERE c.deleted_at IS NULL AND c.status = true"
+	if filter.Limit != nil {
+		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
+	}
+
+	if filter.Offset != nil {
+		offsetQuery = fmt.Sprintf("OFFSET %d", *filter.Offset)
+	}
+
+	orderQuery := "ORDER BY c.id DESC"
+	if filter.Order != nil && *filter.Order != "" {
+		parts := strings.Fields(*filter.Order)
+		if len(parts) == 2 {
+			column := parts[0]
+			direction := strings.ToUpper(parts[1])
+			if direction != "ASC" && direction != "DESC" {
+				direction = "ASC"
+			}
+			orderQuery = fmt.Sprintf("ORDER BY %s %s", column, direction)
+		}
+	}
+
+	query := fmt.Sprintf(
+		`
 		SELECT
-			c.id AS cart_id,
+			c.id AS id,
 			c.customer_id,
 			c.total_amount,
 			ci.id AS cart_item_id,
@@ -189,21 +217,34 @@ func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get,
 			ci.price AS item_price,
 			ci.created_at AS item_created_at,
 			p.id AS product_id,
-			p.name,
-			p.description,
+			p.name ->> '%s' as name,
+			p.description ->> '%s' as description,
 			p.images,
 			p.views_count,
-			p.rating
-		FROM carts c
+			p.rating_avg
+		FROM (
+		    SELECT id
+		    FROM carts c
+		    %s
+		    %s
+		    %s
+		    %s
+		) AS c_filtered
+		LEFT JOIN carts c ON c.id = c_filtered.id
 		LEFT JOIN cart_items ci ON c.id = ci.cart_id AND ci.deleted_at IS NULL
 		LEFT JOIN products p ON ci.product_id = p.id AND p.deleted_at IS NULL AND p.status = true
-		WHERE c.customer_id = ? AND c.deleted_at IS NULL
-		ORDER BY c.id, ci.id desc
-	`
+		`,
+		*filter.Language,
+		*filter.Language,
+		whereQuery,
+		orderQuery,
+		limitQuery,
+		offsetQuery,
+	)
 
-	rows, err := r.QueryContext(ctx, query, customerId)
+	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -224,7 +265,7 @@ func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get,
 			description sql.NullString
 			imagesJSON  []byte
 			viewsCount  sql.NullInt64
-			rating      sql.NullInt64
+			rating      sql.NullFloat64
 		)
 
 		err := rows.Scan(
@@ -243,7 +284,7 @@ func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get,
 			&rating,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		if _, ok := cartMap[cartId]; !ok {
@@ -270,7 +311,7 @@ func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get,
 				Images:      &imagesArray,
 				Quantity:    int(itemQuantity.Int64),
 				Price:       itemPrice.Float64,
-				Rating:      int8(rating.Int64),
+				Rating:      int8(rating.Float64),
 				ViewsCount:  int(viewsCount.Int64),
 				ProductId:   productID.Int64,
 			})
@@ -279,8 +320,24 @@ func (r *Repository) GetList(ctx context.Context, customerId int64) ([]cart.Get,
 
 	var result []cart.Get
 	for _, c := range cartMap {
-		result = append(result, *c)
+		for i, j := 0, len(c.Items)-1; i < j; i, j = i+1, j-1 {
+			c.Items[i], c.Items[j] = c.Items[j], c.Items[i]
+		}
+
+		result = append([]cart.Get{*c}, result...)
 	}
 
-	return result, nil
+	countQuery := `SELECT COUNT(c.id) FROM carts c WHERE c.deleted_at IS NULL`
+
+	countRows, err := r.QueryContext(ctx, countQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer countRows.Close()
+
+	count := int64(0)
+	if err = r.ScanRows(ctx, countRows, &count); err != nil {
+		return nil, 0, fmt.Errorf("select category count: %w", err)
+	}
+	return result, count, nil
 }

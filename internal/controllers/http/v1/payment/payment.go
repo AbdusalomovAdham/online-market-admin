@@ -1,9 +1,9 @@
-package payment_status
+package payment
 
 import (
 	"context"
 	"main/internal/entity"
-	payment_status "main/internal/services/payment_status"
+	payment "main/internal/services/payment"
 	"net/http"
 	"strconv"
 
@@ -11,15 +11,15 @@ import (
 )
 
 type Controller struct {
-	service payment_status.Service
+	service payment.Service
 }
 
-func NewController(service payment_status.Service) Controller {
+func NewController(service payment.Service) Controller {
 	return Controller{service: service}
 }
 
 func (ac Controller) AdminCreatePaymentStatus(c *gin.Context) {
-	var data payment_status.Create
+	var data payment.Create
 
 	if err := c.ShouldBind(&data); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
@@ -110,11 +110,11 @@ func (ac Controller) AdminGetPaymentStatusList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "data": paymentStatuses, "total": total})
+	c.JSON(200, gin.H{"message": "ok!", "data": paymentStatuses, "count": total})
 }
 
 func (ac Controller) AdminUpdatePaymentStatus(c *gin.Context) {
-	var data payment_status.Update
+	var data payment.Update
 	if err := c.ShouldBind(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

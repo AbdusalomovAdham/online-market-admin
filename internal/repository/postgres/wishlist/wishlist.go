@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"main/internal/entity"
 	"main/internal/services/wishlist"
@@ -20,7 +21,7 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetList, error) {
+func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetList, int64, error) {
 	query := `
         SELECT
             wl.id AS wishlist_id,
@@ -35,17 +36,17 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
             p.views_count,
             p.discount_percent,
             p.category_id,
-            p.rating,
+            p.rating_avg,
             p.description
         FROM wishlists wl
         LEFT JOIN wishlist_items wli ON wl.id = wli.wishlist_id
         LEFT JOIN products p ON wli.product_id = p.id
-        WHERE wl.customer_id = ? AND wl.deleted_at IS NULL AND wl.status = true AND (p.deleted_at IS NULL OR p.id IS NULL AND p.status = true) AND wli.deleted_at IS NULL
+        WHERE wl.deleted_at IS NULL AND wl.status = true AND (p.deleted_at IS NULL OR p.id IS NULL AND p.status = true) AND wli.deleted_at IS NULL
     `
 
 	rows, err := r.QueryContext(ctx, query, userId)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -72,7 +73,7 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 			&categoryId, &rating, &description,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		if _, ok := wishlistMap[wlID]; !ok {
@@ -114,7 +115,20 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 		result = append(result, *wl)
 	}
 
-	return result, nil
+	countQuery := `SELECT COUNT(wl.id) FROM wishlists wl WHERE wl.deleted_at IS NULL`
+
+	countRows, err := r.QueryContext(ctx, countQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer countRows.Close()
+
+	count := int64(0)
+	if err = r.ScanRows(ctx, countRows, &count); err != nil {
+		return nil, 0, fmt.Errorf("select category count: %w", err)
+	}
+
+	return result, count, nil
 }
 
 func (r *Repository) Delete(ctx context.Context, wishlistItemId, customerId int64) error {

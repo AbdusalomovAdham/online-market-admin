@@ -35,6 +35,10 @@ func (uc *Service) GetById(ctx context.Context, id int64) (CategoryById, error) 
 }
 
 func (uc *Service) GetList(ctx context.Context, filter entity.Filter, lang string) ([]Get, int, error) {
+	if lang == "" {
+		lang = "uz"
+	}
+
 	return uc.repo.GetList(ctx, filter, lang)
 }
 

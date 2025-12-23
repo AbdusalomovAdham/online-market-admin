@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -51,7 +52,7 @@ func (r *Repository) Create(ctx context.Context, order order.Create, customerId 
 		ctx,
 		query,
 		order.OrderStatus,
-		order.PaymentStatus,
+		order.PaymentId,
 		order.DeliveryDate,
 		order.TotalAmount,
 		customerId,
@@ -94,31 +95,36 @@ func (r *Repository) Create(ctx context.Context, order order.Create, customerId 
 	return nil
 }
 
-func (r *Repository) GetList(ctx context.Context, userId int64) ([]order.Get, error) {
+func (r *Repository) GetList(ctx context.Context, userId int64, lang string) ([]order.Get, int64, error) {
 
+	if lang == "" {
+		lang = "uz"
+	}
 	var orders []order.Get
 	query := `
-        SELECT id, order_status, payment_status, delivery_date, total_amount
-        FROM orders
-        WHERE customer_id = ? AND deleted_at IS NULL
+        SELECT o.id, os.name ->> ? AS order_status, ps.name ->> ? AS payment_status, o.order_status_id, o.payment_id, o.delivery_date, o.total_amount
+        FROM orders o
+       	LEFT JOIN order_statuses os ON os.id = o.order_status_id
+		LEFT JOIN payments ps ON ps.id = o.payment_id
+        WHERE o.customer_id = ? AND o.deleted_at IS NULL
     `
-	rows, err := r.QueryContext(ctx, query, userId)
+	rows, err := r.QueryContext(ctx, query, lang, lang, userId)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var o order.Get
-		if err := rows.Scan(&o.Id, &o.OrderStatus, &o.PaymentStatus, &o.DeliveryDate, &o.TotalAmount); err != nil {
-			return nil, err
+		if err := rows.Scan(&o.Id, &o.OrderStatus, &o.PaymentStatus, &o.OrderStatusId, &o.PaymentId, &o.DeliveryDate, &o.TotalAmount); err != nil {
+			return nil, 0, err
 		}
 		o.Items = []order.GetItems{}
 		orders = append(orders, o)
 	}
 
 	if len(orders) == 0 {
-		return nil, errors.New("No orders found")
+		return nil, 0, errors.New("No orders found")
 	}
 
 	ordersId := make([]int64, len(orders))
@@ -132,20 +138,20 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]order.Get, er
 				SELECT
 			    oi.id,
 			    oi.order_id,
-			    COALESCE(p.name, '') AS name,
-			    COALESCE(p.description, '') AS description,
+			   	p.name ->> ? AS name,
+				p.description ->> ? AS description,
 			    COALESCE(p.price, 0) AS price,
 				COALESCE(p.images, '[]') AS images,
 			    oi.quantity,
-			    COALESCE(p.rating, 0) AS rating
+			    COALESCE(p.rating_avg, 0) AS rating
 			FROM order_items oi
 			LEFT JOIN products p ON p.id = oi.product_id
 			WHERE oi.order_id = ANY(?) AND p.deleted_at IS NULL AND p.status = true AND oi.deleted_at IS NULL
     `
 
-	itemRows, err := r.QueryContext(ctx, itemsQuery, pq.Array(ordersId))
+	itemRows, err := r.QueryContext(ctx, itemsQuery, lang, lang, pq.Array(ordersId))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer itemRows.Close()
 
@@ -157,12 +163,12 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]order.Get, er
 			Description string
 			Price       float64
 			Quantity    int
-			Rating      int8
+			Rating      float32
 			Images      []byte
 		}
 
 		if err := itemRows.Scan(&item.Id, &item.OrderId, &item.Name, &item.Description, &item.Price, &item.Images, &item.Quantity, &item.Rating); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		var images []entity.File
@@ -185,7 +191,20 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]order.Get, er
 		}
 	}
 
-	return orders, nil
+	countQuery := `SELECT COUNT(o.id) FROM orders o WHERE o.deleted_at IS NULL`
+
+	countRows, err := r.QueryContext(ctx, countQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer countRows.Close()
+
+	count := int64(0)
+	if err = r.ScanRows(ctx, countRows, &count); err != nil {
+		return nil, 0, fmt.Errorf("select category count: %w", err)
+	}
+
+	return orders, count, nil
 }
 
 func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.Get, error) {
@@ -236,7 +255,7 @@ func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.G
 			Description string
 			Price       float64
 			Quantity    int
-			Rating      int8
+			Rating      float32
 			Images      []byte
 		}
 

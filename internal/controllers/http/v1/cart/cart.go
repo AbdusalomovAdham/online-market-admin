@@ -2,6 +2,7 @@ package cart
 
 import (
 	"context"
+	"main/internal/entity"
 	cart "main/internal/services/cart"
 	"net/http"
 	"strconv"
@@ -85,14 +86,51 @@ func (as Controller) DeleteCartItem(c *gin.Context) {
 }
 
 func (as Controller) GetCartList(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	ctx := context.Background()
+	filter := entity.Filter{}
+	query := c.Request.URL.Query()
+	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		lang = "uz"
+	}
+	filter.Language = &lang
 
-	cartItems, err := as.service.GetList(ctx, authHeader)
+	limitQ := query["limit"]
+	if len(limitQ) > 0 {
+		queryInt, err := strconv.Atoi(limitQ[0])
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Limit must be number!",
+			})
+			return
+		}
+
+		filter.Limit = &queryInt
+	}
+
+	offsetQ := query["offset"]
+	if len(offsetQ) > 0 {
+		queryInt, err := strconv.Atoi(offsetQ[0])
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Offset must be number!",
+			})
+
+			return
+		}
+		filter.Offset = &queryInt
+	}
+
+	orderQ := query["order"]
+	if len(orderQ) > 0 {
+		filter.Order = &orderQ[0]
+	}
+
+	ctx := context.Background()
+	cartItems, total, err := as.service.GetList(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": cartItems, "message": "ok!"})
+	c.JSON(http.StatusOK, gin.H{"data": cartItems, "message": "ok!", "count": total})
 }

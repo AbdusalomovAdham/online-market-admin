@@ -1,6 +1,9 @@
 package cart
 
-import "context"
+import (
+	"context"
+	"main/internal/entity"
+)
 
 type Service struct {
 	repo Repository
@@ -38,11 +41,6 @@ func (s Service) DeleteCartItem(ctx context.Context, cartItemId int64, authHeade
 	return s.repo.DeleteCartItem(ctx, cartItemId, isValidToken.Id)
 }
 
-func (s Service) GetList(ctx context.Context, authHeader string) ([]Get, error) {
-	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.repo.GetList(ctx, isValidToken.Id)
+func (s Service) GetList(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
+	return s.repo.GetList(ctx, filter)
 }

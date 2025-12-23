@@ -59,7 +59,7 @@ func (s Service) Upload(ctx context.Context, image *multipart.FileHeader, folder
 	return s.file.Upload(ctx, image, folder)
 }
 
-func (s Service) GetAll(ctx context.Context, filter entity.Filter) ([]Get, int, error) {
+func (s Service) GetAll(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
 	return s.repo.GetAll(ctx, filter)
 }
 

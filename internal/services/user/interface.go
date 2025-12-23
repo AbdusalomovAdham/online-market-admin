@@ -10,7 +10,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, data Create, adminId int64, birthTime time.Time) (int64, error)
-	GetAll(ctx context.Context, filter entity.Filter) ([]Get, int, error)
+	GetAll(ctx context.Context, filter entity.Filter) ([]Get, int64, error)
 	GetById(ctx context.Context, id int64) (Get, error)
 	Update(ctx context.Context, id int64, data Update, adminId int64) error
 	Delete(ctx context.Context, id, adminId int64) error

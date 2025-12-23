@@ -110,7 +110,7 @@ func (ac Controller) AdminGetCategoryList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "data": categories, "total": total})
+	c.JSON(200, gin.H{"message": "ok!", "data": categories, "count": total})
 }
 
 func (ac Controller) AdminUpdateCategory(c *gin.Context) {

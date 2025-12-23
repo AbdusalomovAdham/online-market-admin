@@ -110,7 +110,7 @@ func (ac Controller) AdminGetOrderStatusList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "data": orderStatuses, "total": total})
+	c.JSON(200, gin.H{"message": "ok!", "data": orderStatuses, "count": total})
 }
 
 func (ac Controller) AdminUpdateOrderStatus(c *gin.Context) {

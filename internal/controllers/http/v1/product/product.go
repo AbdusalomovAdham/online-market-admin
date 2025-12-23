@@ -75,6 +75,9 @@ func (as Controller) GetProductsList(c *gin.Context) {
 	filter := entity.Filter{}
 	query := c.Request.URL.Query()
 	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		lang = "uz"
+	}
 	filter.Language = &lang
 
 	categoryId := c.Query("category_id")
