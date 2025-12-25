@@ -2,12 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"main/internal/usecase/auth"
-	"math/big"
-
-	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -24,15 +20,6 @@ func NewService(repo Repository, cache Cache, sendSMS SendSMS, auth Auth) *Servi
 		cache:   cache,
 		sendSMS: sendSMS,
 	}
-}
-
-func GenerateOTP() string {
-	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
-	return fmt.Sprintf("%06d", n.Int64()+100000)
-}
-
-func GenerateTokenUUID() string {
-	return uuid.New().String()
 }
 
 func (s *Service) SignIn(ctx context.Context, data SignIn) (string, error) {

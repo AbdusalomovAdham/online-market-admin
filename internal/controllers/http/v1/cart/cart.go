@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/entity"
 	cart "main/internal/services/cart"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -18,7 +19,7 @@ func NewController(service cart.Service) Controller {
 	return Controller{service: service}
 }
 
-func (as Controller) CreateCart(c *gin.Context) {
+func (as Controller) AdminCartCreate(c *gin.Context) {
 	var cart cart.Create
 	if err := c.ShouldBind(&cart); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -27,7 +28,7 @@ func (as Controller) CreateCart(c *gin.Context) {
 
 	authHeader := c.GetHeader("Authorization")
 	ctx := context.Background()
-	cartId, err := as.service.Create(ctx, cart, authHeader)
+	cartId, err := as.service.AdminCartCreate(ctx, cart, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -37,7 +38,7 @@ func (as Controller) CreateCart(c *gin.Context) {
 
 }
 
-func (as Controller) UpdateCartItemTotal(c *gin.Context) {
+func (as Controller) AdminUpdateCartItemTotal(c *gin.Context) {
 
 	cartItemIdStr := c.Param("id")
 	if cartItemIdStr == "" {
@@ -53,7 +54,7 @@ func (as Controller) UpdateCartItemTotal(c *gin.Context) {
 
 	authHeader := c.GetHeader("Authorization")
 	ctx := context.Background()
-	if err := as.service.UpdateCartItemTotal(ctx, int64(orderId), authHeader); err != nil {
+	if err := as.service.AdminUpdateCartItemTotal(ctx, int64(orderId), authHeader); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -61,7 +62,7 @@ func (as Controller) UpdateCartItemTotal(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok!"})
 }
 
-func (as Controller) DeleteCartItem(c *gin.Context) {
+func (as Controller) AdminDeleteCartItem(c *gin.Context) {
 	cartItemIdStr := c.Param("id")
 	if cartItemIdStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cart id is missing"})
@@ -77,7 +78,7 @@ func (as Controller) DeleteCartItem(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	ctx := context.Background()
 
-	if err := as.service.DeleteCartItem(ctx, int64(cartItemId), authHeader); err != nil {
+	if err := as.service.AdminDeleteCartItem(ctx, int64(cartItemId), authHeader); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -85,7 +86,7 @@ func (as Controller) DeleteCartItem(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok!"})
 }
 
-func (as Controller) GetCartList(c *gin.Context) {
+func (as Controller) AdminGetCartList(c *gin.Context) {
 	filter := entity.Filter{}
 	query := c.Request.URL.Query()
 	lang := c.GetHeader("Accept-Language")
@@ -120,13 +121,14 @@ func (as Controller) GetCartList(c *gin.Context) {
 		filter.Offset = &queryInt
 	}
 
-	orderQ := query["order"]
-	if len(orderQ) > 0 {
-		filter.Order = &orderQ[0]
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
 	}
+	filter.Order = order
 
 	ctx := context.Background()
-	cartItems, total, err := as.service.GetList(ctx, filter)
+	cartItems, total, err := as.service.AdminGetCartList(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -59,10 +59,7 @@ func (r *Repository) GetById(ctx context.Context, id int64) (order_status.OrderS
 	return detail, nil
 }
 
-func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang string) ([]order_status.Get, int, error) {
-	if lang == "" {
-		lang = "uz"
-	}
+func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]order_status.Get, int, error) {
 
 	var list []order_status.Get
 	var limitQuery, offsetQuery string
@@ -98,7 +95,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	        os.created_at
 	    FROM order_statuses os
 	    %s %s %s %s
-	`, lang, whereQuery, orderQuery, limitQuery, offsetQuery)
+	`, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {

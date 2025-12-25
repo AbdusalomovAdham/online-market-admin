@@ -51,19 +51,11 @@ func (s Service) AdminCreateUser(ctx context.Context, data Create, authHeader st
 	return s.repo.Create(ctx, data, isValidToken.Id, *birthTime)
 }
 
-func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
-	return s.file.MultipleUpload(ctx, files, folder, startID)
-}
-
-func (s Service) Upload(ctx context.Context, image *multipart.FileHeader, folder string) (entity.File, error) {
-	return s.file.Upload(ctx, image, folder)
-}
-
-func (s Service) GetAll(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
+func (s Service) AdminUserGetList(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
 	return s.repo.GetAll(ctx, filter)
 }
 
-func (s Service) GetById(ctx context.Context, id int64) (Get, error) {
+func (s Service) AdminUserGetById(ctx context.Context, id int64) (Get, error) {
 	return s.repo.GetById(ctx, id)
 }
 
@@ -104,4 +96,12 @@ func (s Service) AdminUserDelete(ctx context.Context, id int64, authHeader strin
 	}
 
 	return s.repo.Delete(ctx, id, isValid.Id)
+}
+
+func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
+	return s.file.MultipleUpload(ctx, files, folder, startID)
+}
+
+func (s Service) Upload(ctx context.Context, image *multipart.FileHeader, folder string) (entity.File, error) {
+	return s.file.Upload(ctx, image, folder)
 }

@@ -25,10 +25,6 @@ func (s Service) CreateProduct(ctx context.Context, data Create, authHeader stri
 	return s.repo.Create(ctx, data, isValidToken.Id)
 }
 
-func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
-	return s.file.MultipleUpload(ctx, files, folder, startID)
-}
-
 func (s Service) GetById(ctx context.Context, id int64) (GetById, error) {
 	data, err := s.repo.GetById(ctx, id)
 	if err != nil {
@@ -117,4 +113,8 @@ func (s Service) AdminDeleteProduct(ctx context.Context, productId int64, authHe
 	}
 
 	return s.repo.Delete(ctx, productId, isValidToken.Id)
+}
+
+func (s Service) MultipleUpload(ctx context.Context, files []*multipart.FileHeader, folder string, startID *int32) ([]entity.File, error) {
+	return s.file.MultipleUpload(ctx, files, folder, startID)
 }

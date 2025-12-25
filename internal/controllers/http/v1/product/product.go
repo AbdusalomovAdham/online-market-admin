@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/entity"
 	product "main/internal/services/product"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -19,8 +20,8 @@ func NewController(service product.Service) Controller {
 }
 
 func (as Controller) CreateProduct(c *gin.Context) {
-	var data product.Create
-	if err := c.ShouldBind(&data); err != nil {
+	var productData product.Create
+	if err := c.ShouldBind(&productData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -40,11 +41,11 @@ func (as Controller) CreateProduct(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
 		}
-		data.Images = imgFile
+		productData.Images = imgFile
 	}
 	authHeader := c.GetHeader("Authorization")
 
-	id, err := as.service.CreateProduct(c, data, authHeader)
+	id, err := as.service.CreateProduct(c, productData, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -118,10 +119,11 @@ func (as Controller) GetProductsList(c *gin.Context) {
 		filter.Offset = &queryInt
 	}
 
-	orderQ := query["order"]
-	if len(orderQ) > 0 {
-		filter.Order = &orderQ[0]
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
 	}
+	filter.Order = order
 	ctx := context.Background()
 
 	list, count, err := as.service.GetList(ctx, filter)

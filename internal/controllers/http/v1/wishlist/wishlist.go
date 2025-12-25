@@ -2,7 +2,9 @@ package wishlist
 
 import (
 	"context"
+	"main/internal/entity"
 	"main/internal/services/wishlist"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -19,15 +21,58 @@ func NewController(service *wishlist.Service) Controller {
 	}
 }
 
-func (as Controller) WishList(c *gin.Context) {
+func (as Controller) AdminWishistGetList(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
+	var filter entity.Filter
+	query := c.Request.URL.Query()
+
+	limitQ := query["limit"]
+	if len(limitQ) > 0 {
+		queryInt, err := strconv.Atoi(limitQ[0])
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Limit must be number!",
+			})
+			return
+		}
+
+		filter.Limit = &queryInt
+	}
+
+	offsetQ := query["offset"]
+	if len(offsetQ) > 0 {
+		queryInt, err := strconv.Atoi(offsetQ[0])
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Offset must be number!",
+			})
+
+			return
+		}
+		filter.Offset = &queryInt
+	}
+
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
+	}
+	filter.Order = order
+
+	lang := c.GetHeader("Accept-langueage")
+	if lang == "" {
+		lang = "uz"
+		filter.Language = &lang
+	} else {
+		filter.Language = &lang
+	}
+
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	ctx := context.Background()
-	wishlistItems, count, err := as.service.GetList(ctx, authHeader)
+	wishlistItems, count, err := as.service.AdminWishistGetList(ctx, authHeader, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -36,7 +81,7 @@ func (as Controller) WishList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": wishlistItems, "count": count})
 }
 
-func (as Controller) Create(c *gin.Context) {
+func (as Controller) AdminWishlistCreate(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -50,7 +95,7 @@ func (as Controller) Create(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	id, err := as.service.Create(ctx, productId, authHeader)
+	id, err := as.service.AdminWishlistCreate(ctx, productId, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -59,7 +104,7 @@ func (as Controller) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": id, "message": "ok!"})
 }
 
-func (as Controller) Delete(c *gin.Context) {
+func (as Controller) AdminWishlistDelete(c *gin.Context) {
 	paramsStr := c.Param("id")
 	if paramsStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -79,7 +124,7 @@ func (as Controller) Delete(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	if err := as.service.Delete(ctx, int64(wishlistId), authHeader); err != nil {
+	if err := as.service.AdminWishlistDelete(ctx, int64(wishlistId), authHeader); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

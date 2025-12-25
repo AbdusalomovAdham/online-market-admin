@@ -57,7 +57,7 @@ func (r *Repository) GetById(ctx context.Context, id int64) (category.CategoryBy
 	return detail, nil
 }
 
-func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang string) ([]category.Get, int, error) {
+func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]category.Get, int, error) {
 	var list []category.Get
 	var limitQuery, offsetQuery string
 
@@ -92,7 +92,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	        d.created_at
 	    FROM categories d
 	    %s %s %s %s
-	`, lang, whereQuery, orderQuery, limitQuery, offsetQuery)
+	`, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {

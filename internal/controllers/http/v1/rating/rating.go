@@ -17,7 +17,7 @@ func NewController(service rating.Service) Controller {
 	return Controller{service: service}
 }
 
-func (as Controller) CreateRating(c *gin.Context) {
+func (as Controller) AdminRatingCreateRating(c *gin.Context) {
 	var data rating.Create
 
 	if err := c.ShouldBind(&data); err != nil {

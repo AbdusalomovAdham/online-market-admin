@@ -31,7 +31,9 @@ func (r *Repository) Create(ctx context.Context, paymentStatus payment.Create, a
 
 func (r *Repository) Delete(ctx context.Context, paymenStatusId int64, adminId int64) error {
 
-	query := `UPDATE payments SET deleted_at = NOW(), deleted_by = ? WHERE id = ? RETURNING id`
+	query := `UPDATE payments
+			SET deleted_at = NOW(), deleted_by = ?
+			WHERE id = ? RETURNING id`
 	_, err := r.ExecContext(ctx, query, adminId, paymenStatusId)
 	if err != nil {
 		return err
@@ -111,7 +113,9 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 		return nil, 0, err
 	}
 
-	countQuery := `SELECT COUNT(os.id) FROM payments os WHERE os.deleted_at IS NULL`
+	countQuery := `SELECT COUNT(os.id)
+				FROM payments os
+				WHERE os.deleted_at IS NULL`
 
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {

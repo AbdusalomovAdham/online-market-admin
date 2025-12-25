@@ -1,6 +1,9 @@
 package order
 
-import "context"
+import (
+	"context"
+	"main/internal/entity"
+)
 
 type Service struct {
 	repo Repository
@@ -14,7 +17,7 @@ func NewService(repo Repository, auth Auth) Service {
 	}
 }
 
-func (s *Service) Create(ctx context.Context, order Create, authHeader string) error {
+func (s *Service) AdminOrderCreate(ctx context.Context, order Create, authHeader string) error {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return err
@@ -23,16 +26,16 @@ func (s *Service) Create(ctx context.Context, order Create, authHeader string) e
 	return s.repo.Create(ctx, order, isValidToken.Id)
 }
 
-func (s *Service) GetList(ctx context.Context, authHeader string, lang string) ([]Get, int64, error) {
+func (s *Service) AdminOrderGetList(ctx context.Context, authHeader string, filter entity.Filter) ([]Get, int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return s.repo.GetList(ctx, isValidToken.Id, lang)
+	return s.repo.GetList(ctx, isValidToken.Id, filter)
 }
 
-func (s *Service) GetById(ctx context.Context, orderId int64, authHeader string) (Get, error) {
+func (s *Service) AdminOrderGetById(ctx context.Context, orderId int64, authHeader string) (Get, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return Get{}, err
@@ -41,7 +44,7 @@ func (s *Service) GetById(ctx context.Context, orderId int64, authHeader string)
 	return s.repo.GetById(ctx, orderId, isValidToken.Id)
 }
 
-func (s *Service) Delete(ctx context.Context, orderId int64, authHeader string) error {
+func (s *Service) AdminOrderDelete(ctx context.Context, orderId int64, authHeader string) error {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return err

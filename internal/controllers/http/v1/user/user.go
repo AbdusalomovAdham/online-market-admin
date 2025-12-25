@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/entity"
 	user "main/internal/services/user"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -52,7 +53,7 @@ func (as Controller) AdminCreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok!", "id": id})
 }
 
-func (as Controller) AdminGetList(c *gin.Context) {
+func (as Controller) AdminUserGetList(c *gin.Context) {
 	var filter entity.Filter
 	query := c.Request.URL.Query()
 
@@ -82,13 +83,14 @@ func (as Controller) AdminGetList(c *gin.Context) {
 		filter.Offset = &queryInt
 	}
 
-	orderQ := query["order"]
-	if len(orderQ) > 0 {
-		filter.Order = &orderQ[0]
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
 	}
+	filter.Order = order
 
 	ctx := context.Background()
-	users, count, err := as.service.GetAll(ctx, filter)
+	users, count, err := as.service.AdminUserGetList(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -97,7 +99,7 @@ func (as Controller) AdminGetList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": users, "count": count})
 }
 
-func (as Controller) AdminGetById(c *gin.Context) {
+func (as Controller) AdminUserGetById(c *gin.Context) {
 	id := c.Param("id")
 	idInt, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
@@ -108,7 +110,7 @@ func (as Controller) AdminGetById(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	user, err := as.service.GetById(ctx, idInt)
+	user, err := as.service.AdminUserGetById(ctx, idInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return

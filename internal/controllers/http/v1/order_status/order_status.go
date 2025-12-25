@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/entity"
 	order_status "main/internal/services/order_status"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -18,7 +19,7 @@ func NewController(service order_status.Service) Controller {
 	return Controller{service: service}
 }
 
-func (ac Controller) AdminCreateOrderStatus(c *gin.Context) {
+func (ac Controller) AdminOrderStatusCreate(c *gin.Context) {
 	var data order_status.Create
 
 	if err := c.ShouldBind(&data); err != nil {
@@ -33,7 +34,7 @@ func (ac Controller) AdminCreateOrderStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	orderStatusId, err := ac.service.Create(ctx, data, authHeader)
+	orderStatusId, err := ac.service.AdminOrderStatusCreate(ctx, data, authHeader)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -42,7 +43,7 @@ func (ac Controller) AdminCreateOrderStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "ok!", "id": orderStatusId})
 }
 
-func (ac Controller) AdminGetOrderStatusById(c *gin.Context) {
+func (ac Controller) AdminOrderStatusGetById(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
@@ -57,7 +58,7 @@ func (ac Controller) AdminGetOrderStatusById(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	orderStatus, err := ac.service.GetById(ctx, id)
+	orderStatus, err := ac.service.AdminOrderStatusGetById(ctx, id)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -66,7 +67,7 @@ func (ac Controller) AdminGetOrderStatusById(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "ok!", "data": orderStatus})
 }
 
-func (ac Controller) AdminGetOrderStatusList(c *gin.Context) {
+func (ac Controller) AdminOrderStatusGetList(c *gin.Context) {
 	var filter entity.Filter
 	query := c.Request.URL.Query()
 
@@ -96,15 +97,22 @@ func (ac Controller) AdminGetOrderStatusList(c *gin.Context) {
 		filter.Offset = &queryInt
 	}
 
-	orderQ := query["order"]
-	if len(orderQ) > 0 {
-		filter.Order = &orderQ[0]
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
 	}
+	filter.Order = order
 
 	ctx := context.Background()
 	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		lang = "uz"
+		filter.Language = &lang
+	} else {
+		filter.Language = &lang
+	}
 
-	orderStatuses, total, err := ac.service.GetList(ctx, filter, lang)
+	orderStatuses, total, err := ac.service.AdminOrderStatusGetList(ctx, filter)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -113,7 +121,7 @@ func (ac Controller) AdminGetOrderStatusList(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "ok!", "data": orderStatuses, "count": total})
 }
 
-func (ac Controller) AdminUpdateOrderStatus(c *gin.Context) {
+func (ac Controller) AdminOrderStatusUpdate(c *gin.Context) {
 	var data order_status.Update
 	if err := c.ShouldBind(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -134,7 +142,7 @@ func (ac Controller) AdminUpdateOrderStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	if err := ac.service.Update(ctx, id, data, authHeader); err != nil {
+	if err := ac.service.AdminOrderStatusUpdate(ctx, id, data, authHeader); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,7 +150,7 @@ func (ac Controller) AdminUpdateOrderStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "ok!"})
 }
 
-func (ac Controller) AdminDeleteOrderStatus(c *gin.Context) {
+func (ac Controller) AdminOrderStatusDelete(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
@@ -157,7 +165,7 @@ func (ac Controller) AdminDeleteOrderStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	if err := ac.service.Delete(ctx, id, authHeader); err != nil {
+	if err := ac.service.AdminOrderStatusDelete(ctx, id, authHeader); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

@@ -121,9 +121,9 @@ func main() {
 
 		// #user
 		// list
-		v1.GET("/admin/user/list", authMiddleware.AuthMiddleware(), userController.AdminGetList)
+		v1.GET("/admin/user/list", authMiddleware.AuthMiddleware(), userController.AdminUserGetList)
 		// get by id
-		v1.GET("/admin/user/:id", authMiddleware.AuthMiddleware(), userController.AdminGetById)
+		v1.GET("/admin/user/:id", authMiddleware.AuthMiddleware(), userController.AdminUserGetById)
 		// create
 		v1.POST("/admin/user/create", authMiddleware.AuthMiddleware(), userController.AdminCreateUser)
 		//update
@@ -133,23 +133,23 @@ func main() {
 
 		// #category
 		// list
-		v1.GET("/admin/category/list", authMiddleware.AuthMiddleware(), categoryController.AdminGetCategoryList)
+		v1.GET("/admin/category/list", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryGetList)
 		// get by id
-		v1.GET("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminGetCategoryById)
+		v1.GET("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryGetById)
 		// create
-		v1.POST("/admin/category/create", authMiddleware.AuthMiddleware(), categoryController.AdminCreateCategory)
+		v1.POST("/admin/category/create", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryCreate)
 		// update
-		v1.PATCH("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminUpdateCategory)
+		v1.PATCH("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryUpdate)
 		// delete
-		v1.DELETE("/admin/category/delete/:id", authMiddleware.AuthMiddleware(), categoryController.AdminDeleteCategory)
+		v1.DELETE("/admin/category/delete/:id", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryDelete)
 
 		// #wishlist
 		// list
-		v1.GET("/wishlist", authMiddleware.AuthMiddleware(), wishlistController.WishList)
+		v1.GET("/wishlist", authMiddleware.AuthMiddleware(), wishlistController.AdminWishistGetList)
 		// create
-		v1.POST("/wishlist/create", authMiddleware.AuthMiddleware(), wishlistController.Create)
+		v1.POST("/wishlist/create", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistCreate)
 		// delete
-		v1.DELETE("/wishlist/delete/:id", authMiddleware.AuthMiddleware(), wishlistController.Delete)
+		v1.DELETE("/wishlist/delete/:id", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistDelete)
 
 		//  #products
 		// create
@@ -157,7 +157,7 @@ func main() {
 		// get by id
 		v1.GET("/admin/product/:id", authMiddleware.AuthMiddleware(), productController.GetById)
 		// list
-		v1.GET("/admin/products", productController.GetProductsList)
+		v1.GET("/admin/products", authMiddleware.AuthMiddleware(), productController.GetProductsList)
 		// update
 		v1.PATCH("/admin/product/update/:id", authMiddleware.AuthMiddleware(), productController.UpdateProduct)
 		// // delete
@@ -167,47 +167,47 @@ func main() {
 		// create
 		// v1.POST("/order/create", authMiddleware.AuthMiddleware(), orderController.CreateOrder)
 		// list
-		v1.GET("/order/list", authMiddleware.AuthMiddleware(), orderController.GetOrderList)
+		v1.GET("/order/list", authMiddleware.AuthMiddleware(), orderController.AdminOrderGetList)
 		// get by id
-		v1.GET("/order/:id", authMiddleware.AuthMiddleware(), orderController.GetOrderById)
+		v1.GET("/order/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderGetById)
 		// update
 		// v1.PATCH("/order/update/:id", authMiddleware.AuthMiddleware(), orderController.UpdateOrder)
 		// delete
-		v1.DELETE("/order/delete/:id", authMiddleware.AuthMiddleware(), orderController.DeleteOrder)
+		v1.DELETE("/order/delete/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderDelete)
 
 		// #cart
 		// create
-		v1.POST("/cart/create", authMiddleware.AuthMiddleware(), cartController.CreateCart)
+		v1.POST("/cart/create", authMiddleware.AuthMiddleware(), cartController.AdminCartCreate)
 		// cart item total update
-		v1.PATCH("/cart/item/:id/update", authMiddleware.AuthMiddleware(), cartController.UpdateCartItemTotal)
+		v1.PATCH("/cart/item/:id/update", authMiddleware.AuthMiddleware(), cartController.AdminUpdateCartItemTotal)
 		// delete cart item
-		v1.DELETE("/cart/item/delete/:id", authMiddleware.AuthMiddleware(), cartController.DeleteCartItem)
+		v1.DELETE("/cart/item/delete/:id", authMiddleware.AuthMiddleware(), cartController.AdminDeleteCartItem)
 		// get cart list
-		v1.GET("/cart/list", authMiddleware.AuthMiddleware(), cartController.GetCartList)
+		v1.GET("/cart/list", authMiddleware.AuthMiddleware(), cartController.AdminGetCartList)
 
 		// #order status
 		// list
-		v1.GET("/admin/order-status/list", authMiddleware.AuthMiddleware(), orderStatusController.AdminGetOrderStatusList)
+		v1.GET("/admin/order-status/list", authMiddleware.AuthMiddleware(), orderStatusController.AdminOrderStatusGetList)
 		// get by id
-		v1.GET("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminGetOrderStatusById)
+		v1.GET("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminOrderStatusGetById)
 		// create
-		v1.POST("/admin/order-status/create", authMiddleware.AuthMiddleware(), orderStatusController.AdminCreateOrderStatus)
+		v1.POST("/admin/order-status/create", authMiddleware.AuthMiddleware(), orderStatusController.AdminOrderStatusCreate)
 		// update
-		v1.PATCH("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminUpdateOrderStatus)
+		v1.PATCH("/admin/order-status/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminOrderStatusUpdate)
 		// delete
-		v1.DELETE("/admin/order-status/delete/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminDeleteOrderStatus)
+		v1.DELETE("/admin/order-status/delete/:id", authMiddleware.AuthMiddleware(), orderStatusController.AdminOrderStatusDelete)
 
 		// #payment status
 		// list
-		v1.GET("/admin/payment-status/list", authMiddleware.AuthMiddleware(), paymentStatusController.AdminGetPaymentStatusList)
+		v1.GET("/admin/payment-status/list", authMiddleware.AuthMiddleware(), paymentStatusController.AdminPaymentGetList)
 		// get by id
-		v1.GET("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminGetPaymentStatusById)
+		v1.GET("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminPaymentGetById)
 		// create
-		v1.POST("/admin/payment-status/create", authMiddleware.AuthMiddleware(), paymentStatusController.AdminCreatePaymentStatus)
+		v1.POST("/admin/payment-status/create", authMiddleware.AuthMiddleware(), paymentStatusController.AdminPaymentCreate)
 		// update
-		v1.PATCH("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminUpdatePaymentStatus)
+		v1.PATCH("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AmdinPaymentUpdate)
 		// delete
-		v1.DELETE("/admin/payment-status/delete/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminDeletePaymentStatus)
+		v1.DELETE("/admin/payment-status/delete/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminPaymentDelete)
 	}
 
 	r.Run(serverPost)

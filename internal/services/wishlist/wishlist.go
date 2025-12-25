@@ -2,6 +2,7 @@ package wishlist
 
 import (
 	"context"
+	"main/internal/entity"
 )
 
 type Service struct {
@@ -16,13 +17,13 @@ func NewService(repo Repository, auth Auth) *Service {
 	}
 }
 
-func (s *Service) GetList(ctx context.Context, authHeader string) ([]GetList, int64, error) {
+func (s *Service) AdminWishistGetList(ctx context.Context, authHeader string, filter entity.Filter) ([]GetList, int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	list, count, err := s.repo.GetList(ctx, isValidToken.Id)
+	list, count, err := s.repo.GetList(ctx, isValidToken.Id, filter)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -30,7 +31,7 @@ func (s *Service) GetList(ctx context.Context, authHeader string) ([]GetList, in
 	return list, count, nil
 }
 
-func (s *Service) Create(ctx context.Context, productId Create, authHeader string) (int64, error) {
+func (s *Service) AdminWishlistCreate(ctx context.Context, productId Create, authHeader string) (int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return 0, err
@@ -44,7 +45,7 @@ func (s *Service) Create(ctx context.Context, productId Create, authHeader strin
 	return id, nil
 }
 
-func (s *Service) Delete(ctx context.Context, wishlistItemId int64, authHeader string) error {
+func (s *Service) AdminWishlistDelete(ctx context.Context, wishlistItemId int64, authHeader string) error {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"log"
 	"main/internal/entity"
 	"main/internal/services/wishlist"
+	"strings"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -21,8 +22,36 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetList, int64, error) {
-	query := `
+func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Filter) ([]wishlist.GetList, int64, error) {
+
+	var limitQuery, offsetQuery string
+
+	whereQuery := "WHERE wl.deleted_at IS NULL AND wl.status = true AND (p.deleted_at IS NULL OR p.id IS NULL AND p.status = true) AND wli.deleted_at IS NULL"
+
+	if filter.Limit != nil {
+		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
+	}
+
+	if filter.Offset != nil {
+		offsetQuery = fmt.Sprintf("OFFSET %d", *filter.Offset)
+	}
+
+	orderQuery := "ORDER BY wl.id DESC"
+
+	if filter.Order != nil && *filter.Order != "" {
+		parts := strings.Fields(*filter.Order)
+		if len(parts) == 2 {
+			column := parts[0]
+			direction := strings.ToUpper(parts[1])
+			if direction != "ASC" && direction != "DESC" {
+				direction = "ASC"
+			}
+			orderQuery = fmt.Sprintf("ORDER BY %s %s", column, direction)
+		}
+	}
+
+	query := fmt.Sprintf(
+		`
         SELECT
             wl.id AS wishlist_id,
             wl.customer_id,
@@ -30,20 +59,19 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
             wli.id AS item_id,
             wli.product_id,
             wli.created_at AS item_created_at,
-            p.name,
+            p.name ->> '%s' as name,
             p.price,
             p.images,
             p.views_count,
             p.discount_percent,
             p.category_id,
             p.rating_avg,
-            p.description
+            p.description ->> '%s' as description
         FROM wishlists wl
         LEFT JOIN wishlist_items wli ON wl.id = wli.wishlist_id
         LEFT JOIN products p ON wli.product_id = p.id
-        WHERE wl.deleted_at IS NULL AND wl.status = true AND (p.deleted_at IS NULL OR p.id IS NULL AND p.status = true) AND wli.deleted_at IS NULL
-    `
-
+        %s %s %s %s
+    `, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 	rows, err := r.QueryContext(ctx, query, userId)
 	if err != nil {
 		return nil, 0, err
@@ -64,7 +92,7 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 		var price sql.NullFloat64
 		var imagesJSON []byte
 		var viewsCount, discountPercent, categoryId sql.NullInt64
-		var rating sql.NullInt64
+		var rating sql.NullFloat64
 
 		err := rows.Scan(
 			&wlID, &customerID, &wlCreatedAt,
@@ -78,10 +106,10 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 
 		if _, ok := wishlistMap[wlID]; !ok {
 			wishlistMap[wlID] = &wishlist.GetList{
-				Id:        wlID,
-				UserId:    customerID,
-				CreatedAt: wlCreatedAt,
-				Items:     []wishlist.Item{},
+				Id:         wlID,
+				CustomerId: customerID,
+				CreatedAt:  wlCreatedAt,
+				Items:      []wishlist.Item{},
 			}
 		}
 
@@ -102,7 +130,7 @@ func (r *Repository) GetList(ctx context.Context, userId int64) ([]wishlist.GetL
 				ViewsCount:      viewsCount.Int64,
 				DiscountPercent: int64(discountPercent.Int64),
 				CategoryId:      categoryId.Int64,
-				Rating:          int8(rating.Int64),
+				Rating:          int8(rating.Float64),
 				CreatedAt:       itemCreatedAt.Time,
 				Images:          &imagesArray,
 			}

@@ -14,7 +14,7 @@ func NewService(repo Repository, auth Auth) Service {
 	return Service{repo: repo, auth: auth}
 }
 
-func (s Service) Create(ctx context.Context, cart Create, authHeader string) (int64, error) {
+func (s Service) AdminCartCreate(ctx context.Context, cart Create, authHeader string) (int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return 0, err
@@ -23,7 +23,7 @@ func (s Service) Create(ctx context.Context, cart Create, authHeader string) (in
 	return s.repo.Create(ctx, cart.ProductId, isValidToken.Id)
 }
 
-func (s Service) UpdateCartItemTotal(ctx context.Context, cartItemId int64, authHeader string) error {
+func (s Service) AdminUpdateCartItemTotal(ctx context.Context, cartItemId int64, authHeader string) error {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (s Service) UpdateCartItemTotal(ctx context.Context, cartItemId int64, auth
 	return s.repo.Update(ctx, cartItemId, isValidToken.Id)
 }
 
-func (s Service) DeleteCartItem(ctx context.Context, cartItemId int64, authHeader string) error {
+func (s Service) AdminDeleteCartItem(ctx context.Context, cartItemId int64, authHeader string) error {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return err
@@ -41,6 +41,6 @@ func (s Service) DeleteCartItem(ctx context.Context, cartItemId int64, authHeade
 	return s.repo.DeleteCartItem(ctx, cartItemId, isValidToken.Id)
 }
 
-func (s Service) GetList(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
+func (s Service) AdminGetCartList(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {
 	return s.repo.GetList(ctx, filter)
 }

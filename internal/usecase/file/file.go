@@ -26,6 +26,19 @@ func (uc *UseCase) Upload(ctx context.Context, image *multipart.FileHeader, fold
 		return entity.File{}, errors.New("image not found")
 	}
 
+	ext := strings.ToLower(filepath.Ext(image.Filename))
+	allowed := map[string]bool{
+		".img":  true,
+		".jpg":  true,
+		".jpeg": true,
+		".webp": true,
+		".png":  true,
+	}
+
+	if !allowed[ext] {
+		return entity.File{}, fmt.Errorf("invalid file extension: %s (allowed: .img, .jpg, .jpeg, .webp, .png)", ext)
+	}
+
 	mimeType := image.Header.Get("Content-Type")
 	if !strings.HasPrefix(mimeType, "image/") {
 		return entity.File{}, fmt.Errorf("invalid file type: expected image, got %s", mimeType)

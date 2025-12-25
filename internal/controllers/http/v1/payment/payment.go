@@ -4,6 +4,7 @@ import (
 	"context"
 	"main/internal/entity"
 	payment "main/internal/services/payment"
+	"main/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -18,10 +19,10 @@ func NewController(service payment.Service) Controller {
 	return Controller{service: service}
 }
 
-func (ac Controller) AdminCreatePaymentStatus(c *gin.Context) {
-	var data payment.Create
+func (ac Controller) AdminPaymentCreate(c *gin.Context) {
+	var paymentData payment.Create
 
-	if err := c.ShouldBind(&data); err != nil {
+	if err := c.ShouldBind(&paymentData); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
@@ -33,18 +34,18 @@ func (ac Controller) AdminCreatePaymentStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	paymentStatusId, err := ac.service.Create(ctx, data, authHeader)
+	paymentId, err := ac.service.AdminPaymentCreate(ctx, paymentData, authHeader)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "id": paymentStatusId})
+	c.JSON(200, gin.H{"message": "ok!", "id": paymentId})
 }
 
-func (ac Controller) AdminGetPaymentStatusById(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (ac Controller) AdminPaymentGetById(c *gin.Context) {
+	paymentIdStr := c.Param("id")
+	paymentId, err := strconv.ParseInt(paymentIdStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -57,16 +58,16 @@ func (ac Controller) AdminGetPaymentStatusById(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	paymentStatus, err := ac.service.GetById(ctx, id)
+	paymentData, err := ac.service.AdminPaymentGetById(ctx, paymentId)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "data": paymentStatus})
+	c.JSON(200, gin.H{"message": "ok!", "data": paymentData})
 }
 
-func (ac Controller) AdminGetPaymentStatusList(c *gin.Context) {
+func (ac Controller) AdminPaymentGetList(c *gin.Context) {
 	var filter entity.Filter
 	query := c.Request.URL.Query()
 
@@ -96,32 +97,33 @@ func (ac Controller) AdminGetPaymentStatusList(c *gin.Context) {
 		filter.Offset = &queryInt
 	}
 
-	orderQ := query["order"]
-	if len(orderQ) > 0 {
-		filter.Order = &orderQ[0]
+	order, err := utils.GetQuery(c, "order")
+	if err != nil {
+		return
 	}
+	filter.Order = order
 
 	ctx := context.Background()
-	lang := c.GetHeader("Accept-Language")
+	lang := c.GetHeader("Acceptf-Language")
 
-	paymentStatuses, total, err := ac.service.GetList(ctx, filter, lang)
+	paymentList, total, err := ac.service.AdminPaymentGetList(ctx, filter, lang)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "ok!", "data": paymentStatuses, "count": total})
+	c.JSON(200, gin.H{"message": "ok!", "data": paymentList, "count": total})
 }
 
-func (ac Controller) AdminUpdatePaymentStatus(c *gin.Context) {
-	var data payment.Update
-	if err := c.ShouldBind(&data); err != nil {
+func (ac Controller) AmdinPaymentUpdate(c *gin.Context) {
+	var paymentData payment.Update
+	if err := c.ShouldBind(&paymentData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	idParam := c.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+	paymentIdParamStr := c.Param("id")
+	paymentIdParam, err := strconv.ParseInt(paymentIdParamStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -134,7 +136,7 @@ func (ac Controller) AdminUpdatePaymentStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	if err := ac.service.Update(ctx, id, data, authHeader); err != nil {
+	if err := ac.service.AmdinPaymentUpdate(ctx, paymentIdParam, paymentData, authHeader); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,9 +144,9 @@ func (ac Controller) AdminUpdatePaymentStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "ok!"})
 }
 
-func (ac Controller) AdminDeletePaymentStatus(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseInt(idParam, 10, 64)
+func (ac Controller) AdminPaymentDelete(c *gin.Context) {
+	paymentIdParamStr := c.Param("id")
+	paymentIdParam, err := strconv.ParseInt(paymentIdParamStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -157,7 +159,7 @@ func (ac Controller) AdminDeletePaymentStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	if err := ac.service.Delete(ctx, id, authHeader); err != nil {
+	if err := ac.service.AdminPaymentDelete(ctx, paymentIdParam, authHeader); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

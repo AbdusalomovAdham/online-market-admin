@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"main/internal/entity"
@@ -95,20 +96,43 @@ func (r *Repository) Create(ctx context.Context, order order.Create, customerId 
 	return nil
 }
 
-func (r *Repository) GetList(ctx context.Context, userId int64, lang string) ([]order.Get, int64, error) {
+func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Filter) ([]order.Get, int64, error) {
+	var limitQuery, offsetQuery string
 
-	if lang == "" {
-		lang = "uz"
+	whereQuery := fmt.Sprintf("WHERE o.deleted_at IS NULL AND o.customer_id = %d", userId)
+
+	if filter.Limit != nil {
+		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
 	}
+
+	if filter.Offset != nil {
+		offsetQuery = fmt.Sprintf("OFFSET %d", *filter.Offset)
+	}
+
+	orderQuery := "ORDER BY o.id DESC"
+	if filter.Order != nil && *filter.Order != "" {
+		parts := strings.Fields(*filter.Order)
+		if len(parts) == 2 {
+			column := parts[0]
+			direction := strings.ToUpper(parts[1])
+			if direction != "ASC" && direction != "DESC" {
+				direction = "ASC"
+			}
+			orderQuery = fmt.Sprintf("ORDER BY %s %s", column, direction)
+		}
+	}
+
+	query := fmt.Sprintf(`
+		  	SELECT o.id, os.name ->> '%s' AS order_status, ps.name ->> '%s' AS payment_status, o.order_status_id, o.payment_id, o.delivery_date, o.total_amount
+		    FROM orders o
+		 	LEFT JOIN order_statuses os ON os.id = o.order_status_id
+			LEFT JOIN payments ps ON ps.id = o.payment_id
+		    %s %s %s %s
+	`, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
+
 	var orders []order.Get
-	query := `
-        SELECT o.id, os.name ->> ? AS order_status, ps.name ->> ? AS payment_status, o.order_status_id, o.payment_id, o.delivery_date, o.total_amount
-        FROM orders o
-       	LEFT JOIN order_statuses os ON os.id = o.order_status_id
-		LEFT JOIN payments ps ON ps.id = o.payment_id
-        WHERE o.customer_id = ? AND o.deleted_at IS NULL
-    `
-	rows, err := r.QueryContext(ctx, query, lang, lang, userId)
+
+	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -149,7 +173,7 @@ func (r *Repository) GetList(ctx context.Context, userId int64, lang string) ([]
 			WHERE oi.order_id = ANY(?) AND p.deleted_at IS NULL AND p.status = true AND oi.deleted_at IS NULL
     `
 
-	itemRows, err := r.QueryContext(ctx, itemsQuery, lang, lang, pq.Array(ordersId))
+	itemRows, err := r.QueryContext(ctx, itemsQuery, filter.Language, filter.Language, pq.Array(ordersId))
 	if err != nil {
 		return nil, 0, err
 	}

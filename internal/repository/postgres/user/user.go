@@ -123,7 +123,7 @@ func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Ge
 		users = append(users, u)
 	}
 
-	countQuery := `SELECT COUNT(u.id) FROM users u WHERE u.deleted_at IS NULL AND u.id > 1`
+	countQuery := `SELECT COUNT(u.id) FROM users u WHERE u.deleted_at IS NULL AND u.id != 1`
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {
 		return nil, 0, err
@@ -148,7 +148,7 @@ func (r Repository) GetById(ctx context.Context, id int64) (user.Get, error) {
 	query := `
 		SELECT id, avatar, first_name, last_name, phone_number, login, birth_date, email, role, region_id, district_id, created_at
 		FROM users
-		WHERE id = ? AND deleted_at IS NULL
+		WHERE id = ? AND deleted_at IS NULL AND id != 1
 		LIMIT 1
 	`
 	err := r.DB.QueryRowContext(ctx, query, id).Scan(
@@ -175,10 +175,6 @@ func (r Repository) GetById(ctx context.Context, id int64) (user.Get, error) {
 func (r Repository) Update(ctx context.Context, id int64, data user.Update, adminId int64) error {
 	setParts := []string{}
 	args := []any{}
-
-	if id <= 1 {
-		return errors.New("invalid user id")
-	}
 
 	if data.Avatar != nil {
 		setParts = append(setParts, "avatar = ?")
@@ -250,11 +246,11 @@ func (r Repository) Update(ctx context.Context, id int64, data user.Update, admi
 	}
 
 	setParts = append(setParts, "updated_at = NOW()")
-
 	setParts = append(setParts, "updated_by = ?")
+
 	args = append(args, adminId)
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = ? AND deleted_at IS NULL", strings.Join(setParts, ", "))
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = ? AND deleted_at IS NULL AND id != 1", strings.Join(setParts, ", "))
 	args = append(args, id)
 
 	_, err := r.DB.ExecContext(ctx, query, args...)
@@ -266,12 +262,7 @@ func (r Repository) Update(ctx context.Context, id int64, data user.Update, admi
 }
 
 func (r *Repository) Delete(ctx context.Context, id, adminId int64) error {
-
-	if id <= 1 {
-		return errors.New("invalid user id")
-	}
-
-	query := "UPDATE users SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL"
+	query := "UPDATE users SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL AND id != 1"
 	_, err := r.DB.ExecContext(ctx, query, adminId, id)
 	if err != nil {
 		return err
