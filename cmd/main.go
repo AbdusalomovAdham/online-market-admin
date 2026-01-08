@@ -7,8 +7,11 @@ import (
 	category_controller "main/internal/controllers/http/v1/category"
 	order_controller "main/internal/controllers/http/v1/order"
 	order_status_controller "main/internal/controllers/http/v1/order_status"
+	param_controller "main/internal/controllers/http/v1/param"
+	param_value_controller "main/internal/controllers/http/v1/param_value"
 	payment_controller "main/internal/controllers/http/v1/payment"
 	product_controller "main/internal/controllers/http/v1/product"
+	role_controller "main/internal/controllers/http/v1/role"
 	user_controller "main/internal/controllers/http/v1/user"
 	wishlist_controller "main/internal/controllers/http/v1/wishlist"
 
@@ -22,8 +25,11 @@ import (
 	"main/internal/repository/postgres/category"
 	"main/internal/repository/postgres/order"
 	"main/internal/repository/postgres/order_status"
+	"main/internal/repository/postgres/param"
+	"main/internal/repository/postgres/param_value"
 	"main/internal/repository/postgres/payment"
 	"main/internal/repository/postgres/product"
+	"main/internal/repository/postgres/role"
 	"main/internal/repository/postgres/user"
 	"main/internal/repository/postgres/wishlist"
 
@@ -32,8 +38,11 @@ import (
 	category_service "main/internal/services/category"
 	order_service "main/internal/services/order"
 	order_status_service "main/internal/services/order_status"
+	param_service "main/internal/services/param"
+	param_value_service "main/internal/services/param_value"
 	payment_service "main/internal/services/payment"
 	product_service "main/internal/services/product"
+	role_service "main/internal/services/role"
 	user_service "main/internal/services/user"
 	wishlist_service "main/internal/services/wishlist"
 
@@ -71,6 +80,9 @@ func main() {
 	categoryRepository := category.NewRepository(postgresDB)
 	orderStatusRepository := order_status.NewRepository(postgresDB)
 	paymentStatusRepository := payment.NewRepository(postgresDB)
+	roleRepository := role.NewRepository(postgresDB)
+	paramRepository := param.NewRepository(postgresDB)
+	paramValueRepository := param_value.NewRepository(postgresDB)
 
 	//usecase
 	authUseCase := auth_use_case.NewUseCase(authRepository)
@@ -87,6 +99,9 @@ func main() {
 	categoryService := category_service.NewService(categoryRepository, authUseCase)
 	orderStatusService := order_status_service.NewService(orderStatusRepository, authUseCase)
 	paymenStatusService := payment_service.NewService(paymentStatusRepository, authUseCase)
+	roleStatusService := role_service.NewService(roleRepository)
+	paramService := param_service.NewService(paramRepository, authUseCase)
+	paramValueService := param_value_service.NewService(paramValueRepository, authUseCase)
 
 	//controller
 	authController := auth_controller.NewController(authService)
@@ -98,6 +113,9 @@ func main() {
 	categoryController := category_controller.NewController(categoryService)
 	orderStatusController := order_status_controller.NewController(orderStatusService)
 	paymentStatusController := payment_controller.NewController(paymenStatusService)
+	roleController := role_controller.NewController(roleStatusService)
+	paramController := param_controller.NewController(paramService)
+	paramValueController := param_value_controller.NewController(*paramValueService)
 
 	//middleware
 	authMiddleware := auth_middleware.NewMiddleware(authUseCase)
@@ -142,14 +160,40 @@ func main() {
 		v1.PATCH("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryUpdate)
 		// delete
 		v1.DELETE("/admin/category/delete/:id", authMiddleware.AuthMiddleware(), categoryController.AdminCategoryDelete)
+		// list by parent id
+		v1.POST("/admin/category/:id", authMiddleware.AuthMiddleware(), categoryController.AdminGetByParentId)
+
+		// #param
+		// list
+		v1.GET("/admin/param/list", authMiddleware.AuthMiddleware(), paramController.AdminParamGetList)
+		// // get by id
+		v1.GET("/admin/param/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamGetById)
+		// create
+		v1.POST("/admin/param/create", authMiddleware.AuthMiddleware(), paramController.AdminParamCreate)
+		// update
+		v1.PATCH("/admin/param/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamUpdate)
+		// // delete
+		v1.DELETE("/admin/param/delete/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamDelete)
+
+		// #param_value
+		// list
+		v1.GET("/admin/param-value/list", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueGetList)
+		// // get by id
+		v1.GET("/admin/param-value/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueGetById)
+		// create
+		v1.POST("/admin/param-value/create", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueCreate)
+		// update
+		v1.PATCH("/admin/param-value/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueUpdate)
+		// // delete
+		v1.DELETE("/admin/param-value/delete/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueDelete)
 
 		// #wishlist
 		// list
-		v1.GET("/wishlist", authMiddleware.AuthMiddleware(), wishlistController.AdminWishistGetList)
+		v1.GET("/admin/wishlist", authMiddleware.AuthMiddleware(), wishlistController.AdminWishistGetList)
 		// create
-		v1.POST("/wishlist/create", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistCreate)
+		v1.POST("/admin/wishlist/create", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistCreate)
 		// delete
-		v1.DELETE("/wishlist/delete/:id", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistDelete)
+		v1.DELETE("/admin/wishlist/delete/:id", authMiddleware.AuthMiddleware(), wishlistController.AdminWishlistDelete)
 
 		//  #products
 		// create
@@ -208,6 +252,10 @@ func main() {
 		v1.PATCH("/admin/payment-status/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AmdinPaymentUpdate)
 		// delete
 		v1.DELETE("/admin/payment-status/delete/:id", authMiddleware.AuthMiddleware(), paymentStatusController.AdminPaymentDelete)
+
+		// #role
+		// list
+		v1.GET("/admin/role/list", authMiddleware.AuthMiddleware(), roleController.AdminGetList)
 	}
 
 	r.Run(serverPost)

@@ -40,20 +40,52 @@ func (r *Repository) Delete(ctx context.Context, id int64, userId int64) error {
 	return nil
 }
 
-func (r *Repository) GetById(ctx context.Context, id int64) (category.CategoryById, error) {
+func (r *Repository) GetById(ctx context.Context, id int64, lang string) (category.CategoryById, error) {
 	var detail category.CategoryById
 
-	query := `SELECT id, status, created_at, name FROM categories WHERE id = ? AND deleted_at is NULL`
-
+	// 1. category ma’lumotlari
+	query := `
+        SELECT id, status, created_at, name, parent_id
+        FROM categories
+        WHERE id = ? AND deleted_at IS NULL
+    `
 	rows, err := r.QueryContext(ctx, query, id)
 	if err != nil {
-		return category.CategoryById{}, err
+		return detail, err
 	}
 	defer rows.Close()
 
 	if err := r.ScanRows(ctx, rows, &detail); err != nil {
-		return category.CategoryById{}, err
+		return detail, err
 	}
+
+	query = fmt.Sprintf(
+		`
+        SELECT DISTINCT p.type, p.name ->> '%s' AS param_name
+        FROM category_params cp
+        JOIN params p ON p.id = cp.param_id
+        WHERE %d = ANY(cp.category_id) AND p.deleted_at IS NULL
+    `, lang, id)
+
+	rows, err = r.QueryContext(ctx, query, id)
+	if err != nil {
+		return detail, err
+	}
+	defer rows.Close()
+
+	var params []category.ParamInfo
+
+	for rows.Next() {
+		var p category.ParamInfo
+
+		if err := rows.Scan(&p.Type, &p.Name); err != nil {
+			return detail, err
+		}
+
+		params = append(params, p)
+	}
+
+	detail.Params = params
 	return detail, nil
 }
 
@@ -61,7 +93,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]categ
 	var list []category.Get
 	var limitQuery, offsetQuery string
 
-	whereQuery := "WHERE d.deleted_at IS NULL"
+	whereQuery := "WHERE c.deleted_at IS NULL"
 
 	if filter.Limit != nil {
 		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
@@ -71,7 +103,7 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]categ
 		offsetQuery = fmt.Sprintf("OFFSET %d", *filter.Offset)
 	}
 
-	orderQuery := "ORDER BY d.id DESC"
+	orderQuery := "ORDER BY c.id DESC"
 	if filter.Order != nil && *filter.Order != "" {
 		parts := strings.Fields(*filter.Order)
 		if len(parts) == 2 {
@@ -84,15 +116,23 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]categ
 		}
 	}
 
+	if filter.Search != nil {
+		searchQuery := fmt.Sprintf(" AND (c.name ->> '%s' ILIKE '%%%s%%')", *filter.Language, *filter.Search)
+		whereQuery += searchQuery
+	}
+
 	query := fmt.Sprintf(`
 	    SELECT
-	        d.id,
-	        d.name->>'%s' as name,
-	        d.status,
-	        d.created_at
-	    FROM categories d
+	        c.id,
+	        c.name->>'%s' as name,
+	        c.status,
+	        c.created_at,
+			p.name->> '%s' as parent_name
+	    FROM categories c
+		LEFT JOIN categories p
+        ON p.id = c.parent_id
 	    %s %s %s %s
-	`, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
+	`, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
@@ -105,15 +145,19 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]categ
 		return nil, 0, err
 	}
 
-	countQuery := `SELECT COUNT(d.id) FROM categories d WHERE d.deleted_at IS NULL`
+	countQuery := `SELECT COUNT(c.id) FROM categories c WHERE c.deleted_at IS NULL`
 
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer countRows.Close()
-
 	count := 0
+
+	if len(list) == 0 {
+		return list, count, nil
+	}
+
 	if err = r.ScanRows(ctx, countRows, &count); err != nil {
 		return nil, 0, fmt.Errorf("select category count: %w", err)
 	}
@@ -123,8 +167,8 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter) ([]categ
 func (r *Repository) Update(ctx context.Context, id int64, data category.Update, userId int64) error {
 	var category entity.Category
 	var nameJSON []byte
-	query := `SELECT id, name, status, updated_at, updated_by FROM categories WHERE id = ? AND deleted_at is NULL`
-	if err := r.QueryRowContext(ctx, query, id).Scan(&category.Id, &nameJSON, &category.Status, &category.UpdatedAt, &category.UpdatedBy); err != nil {
+	query := `SELECT id, name, status, updated_at, updated_by, parent_id FROM categories WHERE id = ? AND deleted_at is NULL`
+	if err := r.QueryRowContext(ctx, query, id).Scan(&category.Id, &nameJSON, &category.Status, &category.UpdatedAt, &category.UpdatedBy, &category.ParentId); err != nil {
 		return err
 	}
 
@@ -150,9 +194,76 @@ func (r *Repository) Update(ctx context.Context, id int64, data category.Update,
 		category.Status = data.Status
 	}
 
-	query = `UPDATE categories SET name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND deleted_at is NULL`
-	if _, err := r.ExecContext(ctx, query, category.Name, category.Status, userId, id); err != nil {
+	category.ParentId = nil
+	if data.ParentId != nil {
+		category.ParentId = *data.ParentId
+	}
+
+	query = `UPDATE categories SET parent_id = ?, name = ?, status = ?, updated_by = ?, updated_at = NOW() WHERE id = ? AND deleted_at is NULL`
+	if _, err := r.ExecContext(ctx, query, category.ParentId, category.Name, category.Status, userId, id); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *Repository) GetByParentId(ctx context.Context, filter entity.Filter, categoryParentId int64) ([]category.Get, int, error) {
+	var list []category.Get
+	var limitQuery, offsetQuery string
+	whereQuery := fmt.Sprintf("WHERE c.deleted_at IS NULL AND c.parent_id = %d", categoryParentId)
+
+	if filter.Limit != nil {
+		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
+	}
+
+	if filter.Offset != nil {
+		offsetQuery = fmt.Sprintf("OFFSET %d", *filter.Offset)
+	}
+
+	orderQuery := "ORDER BY c.id DESC"
+	if filter.Order != nil && *filter.Order != "" {
+		parts := strings.Fields(*filter.Order)
+		if len(parts) == 2 {
+			column := parts[0]
+			direction := strings.ToUpper(parts[1])
+			if direction != "ASC" && direction != "DESC" {
+				direction = "ASC"
+			}
+			orderQuery = fmt.Sprintf("ORDER BY %s %s", column, direction)
+		}
+	}
+
+	query := fmt.Sprintf(`
+	    SELECT
+	        c.id,
+	        c.name->>'%s' as name,
+	        c.status,
+	        c.created_at
+	    FROM categories c
+	    %s %s %s %s
+	`, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
+
+	rows, err := r.QueryContext(ctx, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer rows.Close()
+
+	if err := r.ScanRows(ctx, rows, &list); err != nil {
+		return nil, 0, err
+	}
+
+	countQuery := `SELECT COUNT(c.id) FROM categories c WHERE c.deleted_at IS NULL`
+
+	countRows, err := r.QueryContext(ctx, countQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer countRows.Close()
+
+	count := 0
+	if err = r.ScanRows(ctx, countRows, &count); err != nil {
+		return nil, 0, fmt.Errorf("select category count: %w", err)
+	}
+	return list, count, nil
 }

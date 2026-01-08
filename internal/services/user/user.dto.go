@@ -25,7 +25,7 @@ type Get struct {
 	Login       *string   `json:"login"`
 	BirthDate   *string   `json:"birth_date"`
 	Email       *string   `json:"email"`
-	Role        int       `json:"role"`
+	Role        string    `json:"role"`
 	RegionID    *int      `json:"region_id"`
 	DistrictID  *int      `json:"district_id"`
 	CreatedAt   time.Time `json:"created_at"`

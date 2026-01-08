@@ -5,11 +5,10 @@ import (
 	"main/internal/entity"
 	"main/internal/usecase/auth"
 	"mime/multipart"
-	"time"
 )
 
 type Repository interface {
-	Create(ctx context.Context, data Create, adminId int64, birthTime time.Time) (int64, error)
+	Create(ctx context.Context, data Create, adminId int64) (int64, error)
 	GetAll(ctx context.Context, filter entity.Filter) ([]Get, int64, error)
 	GetById(ctx context.Context, id int64) (Get, error)
 	Update(ctx context.Context, id int64, data Update, adminId int64) error

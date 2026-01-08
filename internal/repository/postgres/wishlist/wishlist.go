@@ -66,9 +66,12 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
             p.discount_percent,
             p.category_id,
             p.rating_avg,
+            u.first_name,
+            u.last_name,
             p.description ->> '%s' as description
         FROM wishlists wl
         LEFT JOIN wishlist_items wli ON wl.id = wli.wishlist_id
+        LEFT JOIN users u ON wl.customer_id = u.id AND u.deleted_at IS NULL
         LEFT JOIN products p ON wli.product_id = p.id
         %s %s %s %s
     `, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
@@ -93,12 +96,14 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
 		var imagesJSON []byte
 		var viewsCount, discountPercent, categoryId sql.NullInt64
 		var rating sql.NullFloat64
+		var firstName, lastName sql.NullString
 
 		err := rows.Scan(
 			&wlID, &customerID, &wlCreatedAt,
 			&itemID, &productID, &itemCreatedAt,
 			&name, &price, &imagesJSON, &viewsCount, &discountPercent,
 			&categoryId, &rating, &description,
+			&firstName, &lastName,
 		)
 		if err != nil {
 			return nil, 0, err

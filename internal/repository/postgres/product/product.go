@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"main/internal/entity"
 	product "main/internal/services/product"
 	"strings"
@@ -83,7 +84,7 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 	var data []product.Get
 	var limitQuery, offsetQuery string
 
-	whereQuery := "WHERE p.deleted_at IS NULL AND p.status = true"
+	whereQuery := "WHERE p.deleted_at IS NULL"
 	if filter.Limit != nil {
 		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
 	}
@@ -98,7 +99,9 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 
 	orderQuery := "ORDER BY p.id DESC"
 	if filter.Order != nil && *filter.Order != "" {
-		parts := strings.Fields(*filter.Order)
+		parts := strings.Split(*filter.Order, "+")
+		log.Println("filter.Order repo", parts)
+
 		if len(parts) == 2 {
 			column := parts[0]
 			direction := strings.ToUpper(parts[1])
@@ -107,6 +110,11 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 			}
 			orderQuery = fmt.Sprintf("ORDER BY %s %s", column, direction)
 		}
+	}
+
+	if filter.Search != nil {
+		searchQuery := fmt.Sprintf(" AND (p.name ->> '%s' ILIKE '%%%s%%' OR c.name ->> '%s' ILIKE '%%%s%%')", *filter.Language, *filter.Search, *filter.Language, *filter.Search)
+		whereQuery += searchQuery
 	}
 
 	query := fmt.Sprintf(`
@@ -121,13 +129,16 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 			p.category_id,
 			p.views_count,
 			p.discount_percent,
-			p.images
+			p.status,
+			p.images,
+			c.name ->> '%s' as category_name
 		FROM products p
+		LEFT JOIN categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		%s
 		%s
 		%s
 		%s
-	`, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
+	`, *filter.Language, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
@@ -139,7 +150,7 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 		return nil, 0, err
 	}
 
-	countQuery := `SELECT COUNT(p.id) FROM products p WHERE p.deleted_at IS NULL AND p.status = true`
+	countQuery := `SELECT COUNT(p.id) FROM products p WHERE p.deleted_at IS NULL`
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {
 		return nil, 0, err

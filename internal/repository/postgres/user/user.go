@@ -20,30 +20,54 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r Repository) Create(ctx context.Context, data user.Create, adminId int64, birthTime time.Time) (int64, error) {
+func (r Repository) Create(ctx context.Context, data user.Create, adminId int64) (int64, error) {
 	var id int64
+	// query := `
+	// 	INSERT INTO users
+	// 		(avatar, first_name, last_name, phone_number, password, login, birth_date, email, role, region_id, district_id, created_by, created_at)
+	// 	VALUES
+	// 		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+	// 	RETURNING id
+	// `
+
 	query := `
 		INSERT INTO users
-			(avatar, first_name, last_name, phone_number, password, login, birth_date, email, role, region_id, district_id, created_by, created_at)
+			(first_name, last_name, phone_number, password, login, email, role, created_by, created_at)
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+			(?, ?, ?, ?, ?, ?, ?, ?, NOW())
 		RETURNING id
 	`
+
+	// err := r.DB.QueryRowContext(
+	// 	ctx,
+	// 	query,
+	// 	data.Avatar,
+	// 	data.FirstName,
+	// 	data.LastName,
+	// 	data.PhoneNumber,
+	// 	data.Password,
+	// 	data.Login,
+	// 	birthTime,
+	// 	data.Email,
+	// 	data.Role,
+	// 	data.RegionID,
+	// 	data.DistrictID,
+	// 	adminId,
+	// ).Scan(&id)
+	// if err != nil {
+	// 	return 0, err
+	// }
 
 	err := r.DB.QueryRowContext(
 		ctx,
 		query,
-		data.Avatar,
 		data.FirstName,
 		data.LastName,
 		data.PhoneNumber,
 		data.Password,
 		data.Login,
-		birthTime,
 		data.Email,
 		data.Role,
-		data.RegionID,
-		data.DistrictID,
 		adminId,
 	).Scan(&id)
 	if err != nil {
@@ -83,8 +107,9 @@ func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Ge
 
 	query := fmt.Sprintf(
 		`
-			SELECT id, avatar, first_name, last_name, phone_number, login, birth_date, email, role, region_id, district_id, created_at
+			SELECT u.id, u.avatar, u.first_name, u.last_name, u.phone_number, u.login, u.birth_date, u.email, r.name, u.region_id, u.district_id, u.created_at
 			FROM users u
+			LEFT JOIN roles r ON r.id = u.role
 			%s
 			%s
 			%s

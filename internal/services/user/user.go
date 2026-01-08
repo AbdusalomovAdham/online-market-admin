@@ -2,10 +2,8 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"main/internal/entity"
 	"mime/multipart"
-	"time"
 )
 
 type Service struct {
@@ -38,17 +36,20 @@ func (s Service) AdminCreateUser(ctx context.Context, data Create, authHeader st
 		data.Password = nil
 	}
 
-	var birthTime *time.Time
-	if data.BirthDate != nil {
-		layout := "2006-01-02"
-		parsedTime, err := time.Parse(layout, *data.BirthDate)
-		if err != nil {
-			return 0, fmt.Errorf("invalid birth date format: %w", err)
-		}
-		birthTime = &parsedTime
-	}
+	// var birthTime *time.Time
+	// if birthTime == nil {
+	// 	return nil, errors.New("birthTime is required")
+	// }
+	// if data.BirthDate != nil {
+	// 	layout := "2006-01-02"
+	// 	parsedTime, err := time.Parse(layout, *data.BirthDate)
+	// 	if err != nil {
+	// 		return 0, fmt.Errorf("invalid birth date format: %w", err)
+	// 	}
+	// 	birthTime = &parsedTime
+	// }
 
-	return s.repo.Create(ctx, data, isValidToken.Id, *birthTime)
+	return s.repo.Create(ctx, data, isValidToken.Id)
 }
 
 func (s Service) AdminUserGetList(ctx context.Context, filter entity.Filter) ([]Get, int64, error) {

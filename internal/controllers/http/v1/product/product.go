@@ -76,22 +76,25 @@ func (as Controller) GetProductsList(c *gin.Context) {
 	filter := entity.Filter{}
 	query := c.Request.URL.Query()
 	lang := c.GetHeader("Accept-Language")
+
 	if lang == "" {
 		lang = "uz"
 	}
 	filter.Language = &lang
 
 	categoryId := c.Query("category_id")
-	categoryInt, err := strconv.Atoi(categoryId)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Category id must be number!",
-		})
-		return
-	}
+	if categoryId != "" {
+		categoryInt, err := strconv.Atoi(categoryId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Category id must be number!",
+			})
+			return
+		}
 
-	categoryInt64 := int64(categoryInt)
-	filter.CategoryId = &categoryInt64
+		categoryInt64 := int64(categoryInt)
+		filter.CategoryId = &categoryInt64
+	}
 
 	limitQ := query["limit"]
 	if len(limitQ) > 0 {
@@ -124,6 +127,13 @@ func (as Controller) GetProductsList(c *gin.Context) {
 		return
 	}
 	filter.Order = order
+
+	search, err := utils.GetQuery(c, "search")
+	if err != nil {
+		return
+	}
+	filter.Search = search
+
 	ctx := context.Background()
 
 	list, count, err := as.service.GetList(ctx, filter)

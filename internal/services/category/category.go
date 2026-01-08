@@ -30,12 +30,16 @@ func (uc *Service) AdminCategoryDelete(ctx context.Context, categoryId int64, au
 	return uc.repo.Delete(ctx, categoryId, token.Id)
 }
 
-func (uc *Service) AdminCategoryGetById(ctx context.Context, id int64) (CategoryById, error) {
-	return uc.repo.GetById(ctx, id)
+func (uc *Service) AdminCategoryGetById(ctx context.Context, id int64, lang string) (CategoryById, error) {
+	return uc.repo.GetById(ctx, id, lang)
 }
 
 func (uc *Service) AdminCategoryGetList(ctx context.Context, filter entity.Filter) ([]Get, int, error) {
 	return uc.repo.GetList(ctx, filter)
+}
+
+func (uc *Service) GetByParentId(ctx context.Context, filter entity.Filter, categoryParentId int64) ([]Get, int, error) {
+	return uc.repo.GetByParentId(ctx, filter, categoryParentId)
 }
 
 func (uc *Service) AdminCategoryUpdate(ctx context.Context, id int64, data Update, authHeader string) error {

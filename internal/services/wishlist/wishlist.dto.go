@@ -15,10 +15,12 @@ type CreateItem struct {
 }
 
 type GetList struct {
-	Id         int64     `json:"id"`
-	CustomerId int64     `json:"customer_id" bun:"customer_id"`
-	CreatedAt  time.Time `json:"created_at" bun:"created_at"`
-	Items      []Item    `json:"items"`
+	Id                int64     `json:"id"`
+	CustomerId        int64     `json:"customer_id" bun:"customer_id"`
+	CreatedAt         time.Time `json:"created_at" bun:"created_at"`
+	Items             []Item    `json:"items"`
+	CustomerFirstName string    `json:"first_name" bun:"first_name"`
+	CustomerLastName  string    `json:"last_name" bun:"last_name"`
 }
 
 type Item struct {

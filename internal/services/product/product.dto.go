@@ -22,12 +22,14 @@ type Get struct {
 	Price           float64        `json:"price" form:"price" bun:"price"`
 	StockQuantity   *int64         `json:"stock_quantity" form:"stock_quantity" bun:"stock_quantity"`
 	CategoryId      int64          `json:"category_id" form:"category_id" bun:"category_id"`
+	CategoryName    string         `json:"category_name"`
 	DiscountPercent *int8          `json:"discount_percent" form:"discount_percent" bun:"discount_percent"`
 	RatingAvg       float32        `json:"rating_avg" bun:"rating_avg"`
 	SellerId        int64          `json:"seller_id" bun:"seller_id"`
 	ViewsCount      int64          `json:"views_count" bun:"views_count"`
 	Images          *[]entity.File `json:"images" bun:"images,type:jsonb"`
 	CreatedAt       time.Time      `json:"created_at" bun:"created_at"`
+	Status          bool           `json:"status" bun:"status"`
 }
 
 type GetById struct {
