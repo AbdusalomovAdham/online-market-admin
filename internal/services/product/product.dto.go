@@ -13,6 +13,7 @@ type Create struct {
 	CategoryId      int64               `json:"category_id" form:"category_id"`
 	DiscountPercent *int8               `json:"discount_percent" form:"discount_percent"`
 	Images          []entity.File       `json:"images"`
+	ParamSelected   []ParamSelected     `form:"-"`
 }
 
 type ParamSelected struct {
@@ -37,6 +38,11 @@ type Get struct {
 	Status          bool           `json:"status" bun:"status"`
 }
 
+type ParamWithValues struct {
+	ParamID  int64   `json:"param_id"`
+	ValueIDs []int64 `json:"value_ids"`
+}
+
 type GetById struct {
 	Id              int64               `json:"id" bun:"id"`
 	Name            *entity.Name        `json:"name" bun:"name"`
@@ -53,6 +59,8 @@ type GetById struct {
 	ViewsCount      int64               `json:"views_count" bun:"views_count"`
 	Images          *[]entity.File      `json:"images" bun:"images,type:jsonb"`
 	CreatedAt       time.Time           `json:"created_at" bun:"created_at"`
+
+	Params []ParamWithValues `json:"params"`
 }
 
 type Update struct {

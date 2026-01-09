@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"encoding/json"
 	"main/internal/entity"
 	product "main/internal/services/product"
 	"main/internal/utils"
@@ -24,6 +25,18 @@ func (as Controller) CreateProduct(c *gin.Context) {
 	if err := c.ShouldBind(&productData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	paramsStr := c.PostForm("params")
+
+	if paramsStr != "" {
+		err := json.Unmarshal([]byte(paramsStr), &productData.ParamSelected)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "params parse error: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	form, err := c.MultipartForm()

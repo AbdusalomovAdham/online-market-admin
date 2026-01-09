@@ -21,29 +21,27 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r Repository) Create(ctx context.Context, data product.Create, userId int64) (int64, error) {
-	var id int64
-
+func (r Repository) Create(ctx context.Context, data product.Create, adminId int64) (int64, error) {
+	var newProductid int64
+	var productParamValueId int64
 	query := `INSERT INTO products (name, description, price, stock_quantity, category_id, discount_percent, images, created_by, status, created_at, seller_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`
-	if err := r.QueryRowContext(ctx, query, data.Name, data.Description, data.Price, data.StockQuantity, data.CategoryId, data.DiscountPercent, data.Images, userId, false, time.Now(), userId).Scan(&id); err != nil {
+	if err := r.QueryRowContext(ctx, query, data.Name, data.Description, data.Price, data.StockQuantity, data.CategoryId, data.DiscountPercent, data.Images, adminId, false, time.Now(), adminId).Scan(&newProductid); err != nil {
 		return 0, err
 	}
 
-	return id, nil
-}
+	query = `INSERT INTO product_param_values (product_id, param_id, value_id, created_by, created_at) VALUES (?, ?, ?, ?, NOW()) RETURNING id`
 
-func IncrementViewCount(ctx context.Context, productId int64, r *Repository) error {
-	query := `
-		UPDATE products
-		SET views_count = views_count + 1
-		WHERE id = ? AND deleted_at IS NULL AND status = true
-	`
-	_, err := r.ExecContext(ctx, query, productId)
-	return err
+	for _, param := range data.ParamSelected {
+		for _, value := range param.ValueIDs {
+			if err := r.QueryRowContext(ctx, query, newProductid, param.ParamID, value, adminId).Scan(&productParamValueId); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return newProductid, nil
 }
 
 func (r Repository) GetById(ctx context.Context, id int64, lang string) (product.GetById, error) {
-	// IncrementViewCount(ctx, id, &r)
 	var data product.GetById
 
 	query := fmt.Sprintf(`
@@ -74,7 +72,48 @@ func (r Repository) GetById(ctx context.Context, id int64, lang string) (product
 		return product.GetById{}, err
 	}
 
+	params, err := r.getProductParams(ctx, data.Id)
+	if err != nil {
+		return product.GetById{}, err
+	}
+
+	data.Params = params
+
 	return data, nil
+}
+
+func (r Repository) getProductParams(ctx context.Context, productID int64) ([]product.ParamWithValues, error) {
+	query := `
+		SELECT param_id, value_id
+		FROM product_param_values
+		WHERE product_id = ?
+	`
+
+	rows, err := r.QueryContext(ctx, query, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	paramMap := make(map[int64][]int64)
+
+	for rows.Next() {
+		var paramID, valueID int64
+		if err := rows.Scan(&paramID, &valueID); err != nil {
+			return nil, err
+		}
+		paramMap[paramID] = append(paramMap[paramID], valueID)
+	}
+
+	var result []product.ParamWithValues
+	for pid, values := range paramMap {
+		result = append(result, product.ParamWithValues{
+			ParamID:  pid,
+			ValueIDs: values,
+		})
+	}
+
+	return result, nil
 }
 
 func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]product.Get, int, error) {
