@@ -46,3 +46,7 @@ func (s *Service) ParamValueUpdate(ctx context.Context, id int64, data Update, a
 	}
 	return s.repo.Update(ctx, id, data, isToken.Id)
 }
+
+func (s *Service) ParamValueGetListByParamId(ctx context.Context, filter entity.Filter, paramId int) ([]Get, error) {
+	return s.repo.GetListByParamId(ctx, filter, paramId)
+}

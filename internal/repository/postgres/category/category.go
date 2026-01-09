@@ -43,7 +43,6 @@ func (r *Repository) Delete(ctx context.Context, id int64, userId int64) error {
 func (r *Repository) GetById(ctx context.Context, id int64, lang string) (category.CategoryById, error) {
 	var detail category.CategoryById
 
-	// 1. category ma’lumotlari
 	query := `
         SELECT id, status, created_at, name, parent_id
         FROM categories
@@ -59,9 +58,10 @@ func (r *Repository) GetById(ctx context.Context, id int64, lang string) (catego
 		return detail, err
 	}
 
-	query = fmt.Sprintf(
-		`
-        SELECT DISTINCT p.type, p.name ->> '%s' AS param_name
+	query = fmt.Sprintf(`
+        SELECT DISTINCT
+        	p.id,
+        	p.name ->> '%s' AS param_name
         FROM category_params cp
         JOIN params p ON p.id = cp.param_id
         WHERE %d = ANY(cp.category_id) AND p.deleted_at IS NULL
@@ -78,7 +78,7 @@ func (r *Repository) GetById(ctx context.Context, id int64, lang string) (catego
 	for rows.Next() {
 		var p category.ParamInfo
 
-		if err := rows.Scan(&p.Type, &p.Name); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name); err != nil {
 			return detail, err
 		}
 

@@ -17,7 +17,7 @@ type Get struct {
 }
 
 type ParamInfo struct {
-	Type string `json:"type"`
+	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
 

@@ -15,6 +15,11 @@ type Create struct {
 	Images          []entity.File       `json:"images"`
 }
 
+type ParamSelected struct {
+	ParamID  int64   `json:"param_id"`
+	ValueIDs []int64 `json:"value_ids"`
+}
+
 type Get struct {
 	Id              int64          `json:"id" bun:"id"`
 	Name            *string        `json:"name" bun:"name"`

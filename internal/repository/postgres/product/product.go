@@ -42,32 +42,29 @@ func IncrementViewCount(ctx context.Context, productId int64, r *Repository) err
 	return err
 }
 
-func (r Repository) GetById(ctx context.Context, id int64) (product.GetById, error) {
-	IncrementViewCount(ctx, id, &r)
+func (r Repository) GetById(ctx context.Context, id int64, lang string) (product.GetById, error) {
+	// IncrementViewCount(ctx, id, &r)
 	var data product.GetById
 
-	query := `
+	query := fmt.Sprintf(`
 			SELECT
-			p.id,
-			p.name,
-			p.description,
-			p.price,
-			p.stock_quantity,
-			p.rating_avg,
-			p.seller_id,
-			p.category_id,
-			p.views_count,
-			p.discount_percent,
-			p.images,
-			p.created_at,
-			u.first_name,
-			u.last_name,
-			u.avatar
-			FROM products p
-			LEFT JOIN users u ON p.seller_id = u.id
-			WHERE p.id = ? AND p.deleted_at IS NULL AND p.status = true
-		`
-	rows, err := r.QueryContext(ctx, query, id)
+			id,
+			name,
+			description,
+			price,
+			stock_quantity,
+			rating_avg,
+			seller_id,
+			category_id,
+			views_count,
+			discount_percent,
+			images,
+			created_at
+			FROM products
+			WHERE id = %d AND deleted_at IS NULL
+		`, id)
+
+	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
 		return product.GetById{}, err
 	}

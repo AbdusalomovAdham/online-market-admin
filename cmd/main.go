@@ -178,14 +178,16 @@ func main() {
 		// #param_value
 		// list
 		v1.GET("/admin/param-value/list", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueGetList)
-		// // get by id
+		// get by id
 		v1.GET("/admin/param-value/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueGetById)
 		// create
 		v1.POST("/admin/param-value/create", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueCreate)
 		// update
 		v1.PATCH("/admin/param-value/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueUpdate)
-		// // delete
+		//  delete
 		v1.DELETE("/admin/param-value/delete/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueDelete)
+		// list by param id
+		v1.GET("/admin/param-value/list/:id", authMiddleware.AuthMiddleware(), paramValueController.AdminParamValueGetListByParamId)
 
 		// #wishlist
 		// list

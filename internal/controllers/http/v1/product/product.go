@@ -62,8 +62,13 @@ func (as Controller) GetById(c *gin.Context) {
 		return
 	}
 
+	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		lang = "uz"
+	}
+
 	ctx := context.Background()
-	product, err := as.service.GetById(ctx, productId)
+	product, err := as.service.GetById(ctx, productId, lang)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

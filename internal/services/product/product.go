@@ -25,8 +25,8 @@ func (s Service) CreateProduct(ctx context.Context, data Create, authHeader stri
 	return s.repo.Create(ctx, data, isValidToken.Id)
 }
 
-func (s Service) GetById(ctx context.Context, id int64) (GetById, error) {
-	data, err := s.repo.GetById(ctx, id)
+func (s Service) GetById(ctx context.Context, id int64, lang string) (GetById, error) {
+	data, err := s.repo.GetById(ctx, id, lang)
 	if err != nil {
 		return GetById{}, err
 	}

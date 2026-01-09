@@ -190,3 +190,42 @@ func (r *Repository) Update(ctx context.Context, paramId int64, data param_value
 	}
 	return nil
 }
+
+func (r *Repository) GetListByParamId(ctx context.Context, filter entity.Filter, paramId int) ([]param_value.Get, error) {
+	var list []param_value.Get
+
+	whereQuery := fmt.Sprintf("WHERE pv.deleted_at IS NULL AND pv.status = true AND pv.param_id = %d", paramId)
+
+	orderQuery := "ORDER BY pv.id DESC"
+
+	if filter.Search != nil {
+		searchQuery := fmt.Sprintf(" AND (pv.name ->> '%s') ILIKE '%%%s%%'", *filter.Language, *filter.Search)
+		whereQuery += searchQuery
+	}
+
+	query := fmt.Sprintf(`
+	    SELECT
+	        pv.id,
+	        pv.name->>'%s' as name,
+	        pv.status,
+	        pv.created_at,
+			pv.param_id,
+			p.name->>'%s' as param_name
+	    FROM param_values pv
+		LEFT JOIN params p ON pv.param_id = p.id
+	    %s %s
+	`, *filter.Language, *filter.Language, whereQuery, orderQuery)
+
+	rows, err := r.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	if err := r.ScanRows(ctx, rows, &list); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
