@@ -22,57 +22,57 @@ func NewRepository(DB *bun.DB) *Repository {
 
 func (r Repository) Create(ctx context.Context, data user.Create, adminId int64) (int64, error) {
 	var id int64
-	// query := `
-	// 	INSERT INTO users
-	// 		(avatar, first_name, last_name, phone_number, password, login, birth_date, email, role, region_id, district_id, created_by, created_at)
-	// 	VALUES
-	// 		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-	// 	RETURNING id
-	// `
-
 	query := `
 		INSERT INTO users
-			(first_name, last_name, phone_number, password, login, email, role, created_by, created_at)
+			(avatar, first_name, last_name, phone_number, password, login, birth_date, email, role, region_id, district_id, created_by, created_at)
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?, NOW())
+			(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
 		RETURNING id
 	`
 
-	// err := r.DB.QueryRowContext(
-	// 	ctx,
-	// 	query,
-	// 	data.Avatar,
-	// 	data.FirstName,
-	// 	data.LastName,
-	// 	data.PhoneNumber,
-	// 	data.Password,
-	// 	data.Login,
-	// 	birthTime,
-	// 	data.Email,
-	// 	data.Role,
-	// 	data.RegionID,
-	// 	data.DistrictID,
-	// 	adminId,
-	// ).Scan(&id)
-	// if err != nil {
-	// 	return 0, err
-	// }
+	// query := `
+	// 	INSERT INTO users
+	// 		(first_name, last_name, phone_number, password, login, email, role, created_by, created_at)
+	// 	VALUES
+	// 		(?, ?, ?, ?, ?, ?, ?, ?, NOW())
+	// 	RETURNING id
+	// `
 
 	err := r.DB.QueryRowContext(
 		ctx,
 		query,
+		data.Avatar,
 		data.FirstName,
 		data.LastName,
 		data.PhoneNumber,
 		data.Password,
 		data.Login,
+		data.BirthDate,
 		data.Email,
 		data.Role,
+		data.RegionID,
+		data.DistrictID,
 		adminId,
 	).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
+
+	// err := r.DB.QueryRowContext(
+	// 	ctx,
+	// 	query,
+	// 	data.FirstName,
+	// 	data.LastName,
+	// 	data.PhoneNumber,
+	// 	data.Password,
+	// 	data.Login,
+	// 	data.Email,
+	// 	data.Role,
+	// 	adminId,
+	// ).Scan(&id)
+	// if err != nil {
+	// 	return 0, err
+	// }
 
 	return id, nil
 }
@@ -85,6 +85,10 @@ func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Ge
 
 	if filter.Limit != nil {
 		limitQuery = fmt.Sprintf("LIMIT %d", *filter.Limit)
+	}
+
+	if filter.Role != nil {
+		whereQuery += fmt.Sprintf(" AND u.role = %d", *filter.Role)
 	}
 
 	if filter.Offset != nil {
@@ -149,6 +153,11 @@ func (r Repository) GetAll(ctx context.Context, filter entity.Filter) ([]user.Ge
 	}
 
 	countQuery := `SELECT COUNT(u.id) FROM users u WHERE u.deleted_at IS NULL AND u.id != 1`
+
+	if filter.Role != nil {
+		countQuery += fmt.Sprintf(" AND u.role = %d", *filter.Role)
+	}
+
 	countRows, err := r.QueryContext(ctx, countQuery)
 	if err != nil {
 		return nil, 0, err

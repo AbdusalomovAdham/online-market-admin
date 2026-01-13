@@ -164,9 +164,10 @@ func (r Repository) GetList(ctx context.Context, filter entity.Filter) ([]produc
 			p.seller_id,
 			p.category_id,
 			p.views_count,
-			p.discount_percent,
+			COALESCE(p.discount_percent, 0) AS discount_percent,
 			p.status,
 			p.images,
+			p.created_at,
 			c.name ->> '%s' as category_name
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id AND c.deleted_at IS NULL

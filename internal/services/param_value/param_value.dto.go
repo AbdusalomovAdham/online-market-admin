@@ -28,6 +28,13 @@ type ParamValueById struct {
 	CreatedAt time.Time   `json:"created_at"`
 }
 
+type ParamValueByParamId struct {
+	Id        int64       `json:"id"`
+	Name      entity.Name `json:"name"`
+	Status    bool        `json:"status"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
 type Update struct {
 	Name    *entity.Name `json:"name"`
 	Status  *bool        `json:"status"`

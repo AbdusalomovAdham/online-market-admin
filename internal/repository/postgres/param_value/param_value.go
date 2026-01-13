@@ -191,7 +191,7 @@ func (r *Repository) Update(ctx context.Context, paramId int64, data param_value
 	return nil
 }
 
-func (r *Repository) GetListByParamId(ctx context.Context, filter entity.Filter, paramId int) ([]param_value.Get, error) {
+func (r *Repository) GetListByParamId(ctx context.Context, filter entity.Filter, paramId int) ([]param_value.Get, int64, error) {
 	var list []param_value.Get
 
 	whereQuery := fmt.Sprintf("WHERE pv.deleted_at IS NULL AND pv.status = true AND pv.param_id = %d", paramId)
@@ -218,14 +218,68 @@ func (r *Repository) GetListByParamId(ctx context.Context, filter entity.Filter,
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	defer rows.Close()
 
 	if err := r.ScanRows(ctx, rows, &list); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return list, nil
+	count := int64(0)
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM param_values pv
+		WHERE pv.deleted_at IS NULL AND pv.param_id = ?
+`
+
+	err = r.DB.NewRaw(countQuery, paramId).Scan(ctx, &count)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, count, nil
+}
+
+func (r *Repository) GetByParamId(ctx context.Context, paramId int, filter entity.Filter) ([]param_value.ParamValueByParamId, int64, error) {
+	var list []param_value.ParamValueByParamId
+
+	query := fmt.Sprintf(`
+	    SELECT
+	        pv.id,
+	        pv.name->>'%s' as name,
+	        pv.status,
+	        pv.created_at,
+	    FROM param_values pv
+		LEFT JOIN params p ON pv.param_id = p.id
+	    WHERE pv.deleted_at IS NULL AND pv.param_id = %d
+	`, *filter.Language, paramId)
+
+	rows, err := r.QueryContext(ctx, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer rows.Close()
+
+	if err := r.ScanRows(ctx, rows, &list); err != nil {
+		return nil, 0, err
+	}
+
+	count := int64(0)
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM param_values pv
+		WHERE pv.deleted_at IS NULL AND pv.param_id = $1
+`
+
+	err = r.DB.NewRaw(countQuery, paramId).Scan(ctx, &count)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, count, nil
 }

@@ -27,11 +27,11 @@ func (as Controller) SignIn(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	token, err := as.service.SignIn(ctx, signIn)
+	data, token, err := as.service.SignIn(ctx, signIn)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ok!", "token": token})
+	c.JSON(http.StatusOK, gin.H{"message": "ok!", "token": token, "data": data})
 }

@@ -5,12 +5,14 @@ import (
 	auth_controller "main/internal/controllers/http/v1/auth"
 	cart_controller "main/internal/controllers/http/v1/cart"
 	category_controller "main/internal/controllers/http/v1/category"
+	district_controller "main/internal/controllers/http/v1/district"
 	order_controller "main/internal/controllers/http/v1/order"
 	order_status_controller "main/internal/controllers/http/v1/order_status"
 	param_controller "main/internal/controllers/http/v1/param"
 	param_value_controller "main/internal/controllers/http/v1/param_value"
 	payment_controller "main/internal/controllers/http/v1/payment"
 	product_controller "main/internal/controllers/http/v1/product"
+	region_controller "main/internal/controllers/http/v1/region"
 	role_controller "main/internal/controllers/http/v1/role"
 	user_controller "main/internal/controllers/http/v1/user"
 	wishlist_controller "main/internal/controllers/http/v1/wishlist"
@@ -23,12 +25,14 @@ import (
 	"main/internal/repository/postgres/auth"
 	"main/internal/repository/postgres/cart"
 	"main/internal/repository/postgres/category"
+	"main/internal/repository/postgres/district"
 	"main/internal/repository/postgres/order"
 	"main/internal/repository/postgres/order_status"
 	"main/internal/repository/postgres/param"
 	"main/internal/repository/postgres/param_value"
 	"main/internal/repository/postgres/payment"
 	"main/internal/repository/postgres/product"
+	"main/internal/repository/postgres/region"
 	"main/internal/repository/postgres/role"
 	"main/internal/repository/postgres/user"
 	"main/internal/repository/postgres/wishlist"
@@ -36,12 +40,14 @@ import (
 	auth_service "main/internal/services/auth"
 	cart_service "main/internal/services/cart"
 	category_service "main/internal/services/category"
+	district_service "main/internal/services/district"
 	order_service "main/internal/services/order"
 	order_status_service "main/internal/services/order_status"
 	param_service "main/internal/services/param"
 	param_value_service "main/internal/services/param_value"
 	payment_service "main/internal/services/payment"
 	product_service "main/internal/services/product"
+	region_service "main/internal/services/region"
 	role_service "main/internal/services/role"
 	user_service "main/internal/services/user"
 	wishlist_service "main/internal/services/wishlist"
@@ -83,6 +89,8 @@ func main() {
 	roleRepository := role.NewRepository(postgresDB)
 	paramRepository := param.NewRepository(postgresDB)
 	paramValueRepository := param_value.NewRepository(postgresDB)
+	districtRepository := district.NewRepository(postgresDB)
+	regionRepository := region.NewRepository(postgresDB)
 
 	//usecase
 	authUseCase := auth_use_case.NewUseCase(authRepository)
@@ -102,6 +110,8 @@ func main() {
 	roleStatusService := role_service.NewService(roleRepository)
 	paramService := param_service.NewService(paramRepository, authUseCase)
 	paramValueService := param_value_service.NewService(paramValueRepository, authUseCase)
+	districtService := district_service.NewService(districtRepository, authUseCase)
+	regionService := region_service.NewService(regionRepository, authUseCase)
 
 	//controller
 	authController := auth_controller.NewController(authService)
@@ -116,6 +126,8 @@ func main() {
 	roleController := role_controller.NewController(roleStatusService)
 	paramController := param_controller.NewController(paramService)
 	paramValueController := param_value_controller.NewController(*paramValueService)
+	districtController := district_controller.NewController(districtService)
+	regionController := region_controller.NewController(regionService)
 
 	//middleware
 	authMiddleware := auth_middleware.NewMiddleware(authUseCase)
@@ -166,13 +178,15 @@ func main() {
 		// #param
 		// list
 		v1.GET("/admin/param/list", authMiddleware.AuthMiddleware(), paramController.AdminParamGetList)
-		// // get by id
+		//  get by id
 		v1.GET("/admin/param/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamGetById)
+		//  get by category id
+		v1.GET("/admin/param/category/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamGetByCategoryId)
 		// create
 		v1.POST("/admin/param/create", authMiddleware.AuthMiddleware(), paramController.AdminParamCreate)
 		// update
 		v1.PATCH("/admin/param/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamUpdate)
-		// // delete
+		//  delete
 		v1.DELETE("/admin/param/delete/:id", authMiddleware.AuthMiddleware(), paramController.AdminParamDelete)
 
 		// #param_value
@@ -217,9 +231,11 @@ func main() {
 		// get by id
 		v1.GET("/order/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderGetById)
 		// update
-		// v1.PATCH("/order/update/:id", authMiddleware.AuthMiddleware(), orderController.UpdateOrder)
+		v1.PATCH("/order/update/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderUpdate)
 		// delete
 		v1.DELETE("/order/delete/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderDelete)
+		// delete order item
+		v1.DELETE("/admin/order/item/delete/:id", authMiddleware.AuthMiddleware(), orderController.AdminOrderDeleteOrderItem)
 
 		// #cart
 		// create
@@ -258,6 +274,24 @@ func main() {
 		// #role
 		// list
 		v1.GET("/admin/role/list", authMiddleware.AuthMiddleware(), roleController.AdminGetList)
+
+		// #region
+		// list
+		v1.GET("/admin/region", authMiddleware.AuthMiddleware(), regionController.AdminRegionGetList)
+		// get by id
+		// v1.GET("/admin/region/:id", authMiddleware.AuthMiddleware(), regionController.AdminRegionGetById)
+		// // create
+		// v1.POST("/admin/region/create", authMiddleware.AuthMiddleware(), regionController.AdminRegionCreate)
+		// // update
+		// v1.PATCH("/admin/region/:id", authMiddleware.AuthMiddleware(), regionController.AdminRegionUpdate)
+		// // delete
+		// v1.DELETE("/admin/region/delete/:id", authMiddleware.AuthMiddleware(), regionController.AdminRegionDelete)
+
+		// #district
+		// list
+		v1.GET("/admin/district", authMiddleware.AuthMiddleware(), districtController.AdminDistrictGetList)
+		// get by region id
+		v1.GET("/admin/district/:id", authMiddleware.AuthMiddleware(), districtController.AdminDistrictGetListByRegionId)
 	}
 
 	r.Run(serverPost)

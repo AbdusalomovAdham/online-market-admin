@@ -96,8 +96,9 @@ func (r *Repository) GetList(ctx context.Context, filter entity.Filter, lang str
 	    SELECT
 	        os.id,
 	        os.name->>'%s' as name,
-	        os.status,
-	        os.created_at
+	        os.is_active,
+	        os.created_at,
+	        os.key
 	    FROM payments os
 	    %s %s %s %s
 	`, lang, whereQuery, orderQuery, limitQuery, offsetQuery)

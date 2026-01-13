@@ -177,3 +177,32 @@ func (ac *Controller) AdminParamUpdate(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ok!"})
 }
+
+func (ac *Controller) AdminParamGetByCategoryId(c *gin.Context) {
+	var filter entity.Filter
+	catcategoryIdStr := c.Param("id")
+	if catcategoryIdStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category id is required"})
+		return
+	}
+	catcategoryId, err := strconv.ParseInt(catcategoryIdStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	lang := c.GetHeader("Accept-language")
+	if lang == "" {
+		lang = "uz"
+	}
+	filter.Language = &lang
+
+	ctx := context.Background()
+	params, count, err := ac.service.GetByCategoryId(ctx, catcategoryId, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": map[string]any{"results": params, "count": count}})
+}

@@ -47,3 +47,7 @@ func (s *Service) UpdateParam(ctx context.Context, paramId int64, data UpdatePar
 
 	return s.repo.Update(ctx, paramId, data, isToken.Id)
 }
+
+func (s *Service) GetByCategoryId(ctx context.Context, catcategoryId int64, filter entity.Filter) ([]GetByCategoryId, int64, error) {
+	return s.repo.GetByCategoryId(ctx, catcategoryId, filter)
+}

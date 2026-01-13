@@ -9,13 +9,13 @@ import (
 type Order struct {
 	bun.BaseModel `bun:"table:orders"`
 
-	Id           int64       `json:"id" bun:"id,pk,autoincrement"`
-	OrderStatus  int         `json:"order_status" bun:"order_status"`
-	PaymentId    int         `json:"payment_id" bun:"payment_id"`
-	DeliveryDate string      `json:"delivery_date" bun:"delivery_date"`
-	TotalAmount  float64     `json:"total_amount" bun:"total_amount"`
-	CustomerId   int64       `json:"customer_id" bun:"customer_id"`
-	Items        []OrderItem `json:"items" bun:"items"`
+	Id            int64       `json:"id" bun:"id,pk,autoincrement"`
+	OrderStatusId int         `json:"order_status_id" bun:"order_status_id"`
+	PaymentId     int         `json:"payment_id" bun:"payment_id"`
+	DeliveryDate  string      `json:"delivery_date" bun:"delivery_date"`
+	TotalAmount   float64     `json:"total_amount" bun:"total_amount"`
+	CustomerId    int64       `json:"customer_id" bun:"customer_id"`
+	Items         []OrderItem `json:"items" bun:"items"`
 
 	CreatedAt time.Time  `json:"created_at" bun:"created_at"`
 	CreatedBy *string    `json:"created_by" bun:"created_by"`

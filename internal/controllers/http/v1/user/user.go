@@ -89,6 +89,19 @@ func (as Controller) AdminUserGetList(c *gin.Context) {
 	}
 	filter.Order = order
 
+	roleIdQ := query["role"]
+	if len(roleIdQ) > 0 {
+		roleID, err := strconv.ParseInt(roleIdQ[0], 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Role must be number",
+			})
+			return
+		}
+
+		filter.Role = &roleID
+	}
+
 	ctx := context.Background()
 	users, count, err := as.service.AdminUserGetList(ctx, filter)
 	if err != nil {

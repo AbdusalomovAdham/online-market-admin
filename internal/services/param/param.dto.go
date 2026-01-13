@@ -37,6 +37,13 @@ type Get struct {
 	CreatedAt    time.Time `json:"created_at" bun:"created_at"`
 }
 
+type GetByCategoryId struct {
+	Id        int64     `json:"id" bun:"id"`
+	ParamName string    `json:"param_name" bun:"param_name"`
+	Status    bool      `json:"status" bun:"status"`
+	CreatedAt time.Time `json:"created_at" bun:"created_at"`
+}
+
 type UpdateParam struct {
 	Name       *entity.Name `json:"name" bun:"name"`
 	Type       *string      `json:"type" bun:"type"`

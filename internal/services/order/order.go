@@ -26,7 +26,7 @@ func (s *Service) AdminOrderCreate(ctx context.Context, order Create, authHeader
 	return s.repo.Create(ctx, order, isValidToken.Id)
 }
 
-func (s *Service) AdminOrderGetList(ctx context.Context, authHeader string, filter entity.Filter) ([]Get, int64, error) {
+func (s *Service) AdminOrderGetList(ctx context.Context, authHeader string, filter entity.Filter) ([]GetList, int64, error) {
 	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
 	if err != nil {
 		return nil, 0, err
@@ -35,13 +35,8 @@ func (s *Service) AdminOrderGetList(ctx context.Context, authHeader string, filt
 	return s.repo.GetList(ctx, isValidToken.Id, filter)
 }
 
-func (s *Service) AdminOrderGetById(ctx context.Context, orderId int64, authHeader string) (Get, error) {
-	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
-	if err != nil {
-		return Get{}, err
-	}
-
-	return s.repo.GetById(ctx, orderId, isValidToken.Id)
+func (s *Service) AdminOrderGetById(ctx context.Context, orderId int64, filter entity.Filter) (Get, error) {
+	return s.repo.GetById(ctx, orderId, filter)
 }
 
 func (s *Service) AdminOrderDelete(ctx context.Context, orderId int64, authHeader string) error {
@@ -51,4 +46,22 @@ func (s *Service) AdminOrderDelete(ctx context.Context, orderId int64, authHeade
 	}
 
 	return s.repo.Delete(ctx, orderId, isValidToken.Id)
+}
+
+func (s *Service) AdminOrderUpdate(ctx context.Context, updateData Update, orderId int64, authHeader string) error {
+	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.Update(ctx, updateData, orderId, isValidToken.Id)
+}
+
+func (s *Service) AdminOrderDeleteOrderItem(ctx context.Context, itemId int64, authHeader string) error {
+	isValidToken, err := s.auth.IsValidToken(ctx, authHeader)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.DeleteOrderItem(ctx, itemId, isValidToken.Id)
 }

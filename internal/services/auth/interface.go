@@ -7,7 +7,7 @@ import (
 )
 
 type Repository interface {
-	GetByLogin(ctx context.Context, login string) (string, int64, int, error)
+	GetByLogin(ctx context.Context, login string) (AdminDetails, error)
 }
 
 type Auth interface {

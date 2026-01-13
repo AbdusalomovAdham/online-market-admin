@@ -17,4 +17,5 @@ type Filter struct {
 	Status       *bool
 	Order        *string
 	Language     *string `default:"uz"`
+	Role         *int64
 }

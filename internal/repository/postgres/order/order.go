@@ -12,7 +12,6 @@ import (
 	"main/internal/entity"
 	order "main/internal/services/order"
 
-	"github.com/lib/pq"
 	"github.com/uptrace/bun"
 )
 
@@ -96,7 +95,7 @@ func (r *Repository) Create(ctx context.Context, order order.Create, customerId 
 	return nil
 }
 
-func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Filter) ([]order.Get, int64, error) {
+func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Filter) ([]order.GetList, int64, error) {
 	var limitQuery, offsetQuery string
 
 	whereQuery := fmt.Sprintf("WHERE o.deleted_at IS NULL AND o.customer_id = %d", userId)
@@ -123,14 +122,57 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
 	}
 
 	query := fmt.Sprintf(`
-		  	SELECT o.id, os.name ->> '%s' AS order_status, ps.name ->> '%s' AS payment_status, o.order_status_id, o.payment_id, o.delivery_date, o.total_amount
-		    FROM orders o
-		 	LEFT JOIN order_statuses os ON os.id = o.order_status_id
-			LEFT JOIN payments ps ON ps.id = o.payment_id
-		    %s %s %s %s
-	`, *filter.Language, *filter.Language, whereQuery, orderQuery, limitQuery, offsetQuery)
+		SELECT
+			o.id,
+			os.id,
+			p.id,
+			os.key AS order_status_key,
+			os.name ->> '%s' AS order_status_value,
+			p.key AS payment_status_key,
+			p.name ->> '%s' AS payment_status_value,
+			o.delivery_date,
+			o.total_amount,
+			COUNT(oi.id) AS items_count,
+			o.created_at,
+			TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS customer_name
+		FROM orders o
+		LEFT JOIN payments p ON p.id = o.payment_id
+		LEFT JOIN order_statuses os ON os.id = o.order_status_id
+		LEFT JOIN order_items oi ON oi.order_id = o.id
+		LEFT JOIN users u ON u.id = o.customer_id
+		%s
+		GROUP BY
+			o.id,
+			os.id,
+			p.id,
+			os.key,
+			os.name,
+			p.key,
+			p.name,
+			os.name,
+			p.name,
+			o.delivery_date,
+			o.total_amount,
+			u.first_name,
+			u.last_name
+		%s %s %s`,
+		*filter.Language,
+		*filter.Language,
+		whereQuery,
+		orderQuery,
+		limitQuery,
+		offsetQuery,
+	)
 
-	var orders []order.Get
+	var orders []order.GetList
+	var (
+		orderStatusId    int
+		paymentStatusId  int
+		orderStatusKey   string
+		orderStatusValue string
+		paymentStatusKey *string
+		paymentStatusVal *string
+	)
 
 	rows, err := r.QueryContext(ctx, query)
 	if err != nil {
@@ -139,11 +181,43 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
 	defer rows.Close()
 
 	for rows.Next() {
-		var o order.Get
-		if err := rows.Scan(&o.Id, &o.OrderStatus, &o.PaymentStatus, &o.OrderStatusId, &o.PaymentId, &o.DeliveryDate, &o.TotalAmount); err != nil {
+		var o order.GetList
+		if err := rows.Scan(
+			&o.Id,
+			&orderStatusId,
+			&paymentStatusId,
+			&orderStatusKey,
+			&orderStatusValue,
+			&paymentStatusKey,
+			&paymentStatusVal,
+			&o.DeliveryDate,
+			&o.TotalAmount,
+			&o.ItemsCount,
+			&o.CreatedAt,
+			&o.CustomerName,
+		); err != nil {
 			return nil, 0, err
 		}
-		o.Items = []order.GetItems{}
+
+		o.OrderStatus = order.OrderStatus{
+			Id:    int64(orderStatusId),
+			Key:   orderStatusKey,
+			Value: orderStatusValue,
+		}
+
+		if paymentStatusKey != nil {
+			o.PaymentStatus = order.PaymentStatus{
+				Id:    int64(paymentStatusId),
+				Key:   *paymentStatusKey,
+				Value: *paymentStatusVal,
+			}
+		} else {
+			o.PaymentStatus = order.PaymentStatus{
+				Key:   "pending",
+				Value: "Not paid",
+			}
+		}
+
 		orders = append(orders, o)
 	}
 
@@ -152,67 +226,10 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
 	}
 
 	ordersId := make([]int64, len(orders))
-	orderMap := make(map[int64]*order.Get)
+	orderMap := make(map[int64]*order.GetList)
 	for i := range orders {
 		ordersId[i] = orders[i].Id
 		orderMap[orders[i].Id] = &orders[i]
-	}
-
-	itemsQuery := `
-				SELECT
-			    oi.id,
-			    oi.order_id,
-			   	p.name ->> ? AS name,
-				p.description ->> ? AS description,
-			    COALESCE(p.price, 0) AS price,
-				COALESCE(p.images, '[]') AS images,
-			    oi.quantity,
-			    COALESCE(p.rating_avg, 0) AS rating
-			FROM order_items oi
-			LEFT JOIN products p ON p.id = oi.product_id
-			WHERE oi.order_id = ANY(?) AND p.deleted_at IS NULL AND p.status = true AND oi.deleted_at IS NULL
-    `
-
-	itemRows, err := r.QueryContext(ctx, itemsQuery, filter.Language, filter.Language, pq.Array(ordersId))
-	if err != nil {
-		return nil, 0, err
-	}
-	defer itemRows.Close()
-
-	for itemRows.Next() {
-		var item struct {
-			Id          int64
-			OrderId     int64
-			Name        string
-			Description string
-			Price       float64
-			Quantity    int
-			Rating      float32
-			Images      []byte
-		}
-
-		if err := itemRows.Scan(&item.Id, &item.OrderId, &item.Name, &item.Description, &item.Price, &item.Images, &item.Quantity, &item.Rating); err != nil {
-			return nil, 0, err
-		}
-
-		var images []entity.File
-		if len(item.Images) > 0 {
-			if err := json.Unmarshal(item.Images, &images); err != nil {
-				log.Println("Failed to unmarshal images:", err)
-			}
-		}
-
-		if o, ok := orderMap[item.OrderId]; ok {
-			o.Items = append(o.Items, order.GetItems{
-				Id:          item.Id,
-				Name:        item.Name,
-				Description: item.Description,
-				Price:       item.Price,
-				Quantity:    item.Quantity,
-				Rating:      item.Rating,
-				Images:      &images,
-			})
-		}
 	}
 
 	countQuery := `SELECT COUNT(o.id) FROM orders o WHERE o.deleted_at IS NULL`
@@ -231,41 +248,79 @@ func (r *Repository) GetList(ctx context.Context, userId int64, filter entity.Fi
 	return orders, count, nil
 }
 
-func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.Get, error) {
+func (r Repository) GetById(ctx context.Context, orderId int64, filter entity.Filter) (order.Get, error) {
 	var o order.Get
-
+	var orderStatusName, paymentStatusName, orderStatusKey, paymentStatusKey string
+	var orderStautsId, paymentStatusId int64
 	query := `
-        SELECT id, order_status, payment_status, delivery_date, total_amount
-        FROM orders
-        WHERE id = ? AND customer_id = ? AND deleted_at IS NULL
+        SELECT
+	        o.id,
+	        o.delivery_date,
+	        o.total_amount,
+	        p.key,
+	        os.key,
+	        os.name ->> ? ,
+	        p.name ->> ?,
+			p.id,
+			os.id,
+			TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS customer_name,
+			u.email,
+			u.phone_number,
+			d.name ->> ?,
+			r.name ->> ?
+        FROM orders o
+        LEFT JOIN order_statuses os ON os.id = o.order_status_id
+        LEFT JOIN users u ON u.id = o.customer_id
+        LEFT JOIN payments p ON p.id = o.payment_id
+        LEFT JOIN districts d ON d.id = u.district_id
+        LEFT JOIN regions r ON r.id = d.region_id
+        WHERE o.id = ? AND o.deleted_at IS NULL
     `
-	if err := r.QueryRowContext(ctx, query, orderId, userId).Scan(
+
+	if err := r.QueryRowContext(ctx, query, filter.Language, filter.Language, filter.Language, filter.Language, orderId).Scan(
 		&o.Id,
-		&o.OrderStatus,
-		&o.PaymentStatus,
 		&o.DeliveryDate,
 		&o.TotalAmount,
+		&paymentStatusKey,
+		&orderStatusKey,
+		&orderStatusName,
+		&paymentStatusName,
+		&orderStautsId,
+		&paymentStatusId,
+		&o.CustomerName,
+		&o.Email,
+		&o.PhoneNumber,
+		&o.DistrictName,
+		&o.RegionName,
 	); err != nil {
 		return o, err
 	}
 
+	o.OrderStatus.Id = orderStautsId
+	o.PaymentStatus.Id = paymentStatusId
+	o.OrderStatus.Value = orderStatusName
+	o.PaymentStatus.Value = paymentStatusName
+	o.OrderStatus.Key = orderStatusKey
+	o.PaymentStatus.Key = paymentStatusKey
+
 	o.Items = []order.GetItems{}
 
 	itemsQuery := `
-        SELECT
-            oi.id,
-            oi.order_id,
-            COALESCE(p.name, '') AS name,
-            COALESCE(p.description, '') AS description,
-            COALESCE(p.price, 0) AS price,
-            COALESCE(p.images, '[]') AS images,
-            oi.quantity,
-            COALESCE(p.rating, 0) AS rating
-        FROM order_items oi
-        LEFT JOIN products p ON p.id = oi.product_id
-        WHERE oi.order_id = ? AND p.deleted_at IS NULL AND p.status = true AND oi.deleted_at IS NULL
-    `
-	itemRows, err := r.QueryContext(ctx, itemsQuery, orderId)
+		SELECT
+		    oi.id,
+		    oi.order_id,
+		    COALESCE(p.name ->> ?, ''),
+		    COALESCE(p.description ->> ?, ''),
+		    COALESCE(p.price, 0),
+		    p.images,
+		    oi.quantity,
+		    COALESCE(p.rating_avg, 0),
+		    p.discount_percent
+		FROM order_items oi
+		INNER JOIN products p ON p.id = oi.product_id
+		WHERE oi.order_id = ? AND p.deleted_at IS NULL AND p.status = true AND oi.deleted_at IS NULL`
+
+	itemRows, err := r.QueryContext(ctx, itemsQuery, filter.Language, filter.Language, orderId)
 	if err != nil {
 		return o, err
 	}
@@ -273,14 +328,15 @@ func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.G
 
 	for itemRows.Next() {
 		var item struct {
-			Id          int64
-			OrderId     int64
-			Name        string
-			Description string
-			Price       float64
-			Quantity    int
-			Rating      float32
-			Images      []byte
+			Id              int64
+			OrderId         int64
+			Name            string
+			Description     string
+			Price           float64
+			Quantity        int
+			Rating          float32
+			Images          []byte
+			DiscountPercent int
 		}
 
 		if err := itemRows.Scan(
@@ -292,6 +348,7 @@ func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.G
 			&item.Images,
 			&item.Quantity,
 			&item.Rating,
+			&item.DiscountPercent,
 		); err != nil {
 			return o, err
 		}
@@ -304,17 +361,96 @@ func (r Repository) GetById(ctx context.Context, orderId, userId int64) (order.G
 		}
 
 		o.Items = append(o.Items, order.GetItems{
-			Id:          item.Id,
-			Name:        item.Name,
-			Description: item.Description,
-			Price:       item.Price,
-			Quantity:    item.Quantity,
-			Rating:      item.Rating,
-			Images:      &images,
+			Id:              item.Id,
+			Name:            item.Name,
+			Description:     item.Description,
+			Price:           item.Price,
+			Quantity:        item.Quantity,
+			Rating:          item.Rating,
+			Images:          &images,
+			DiscountPercent: item.DiscountPercent,
+			OrderId:         int64(item.OrderId),
 		})
 	}
 
+	countQuery := `
+    SELECT COUNT(oi.id)
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id = ?
+      AND p.deleted_at IS NULL
+      AND p.status = true
+      AND oi.deleted_at IS NULL
+      `
+
+	if err := r.QueryRowContext(ctx, countQuery, orderId).Scan(&o.ItemsCount); err != nil {
+		return o, err
+	}
+
 	return o, nil
+}
+
+func (r Repository) Update(ctx context.Context, updateData order.Update, orderId int64, adminId int64) error {
+	var order entity.Order
+	query := `SELECT
+				id,
+				payment_id,
+				order_status_id,
+				delivery_date
+				FROM orders
+				WHERE id = ?
+				`
+
+	row := r.QueryRowContext(ctx, query, orderId)
+
+	err := row.Scan(&order.Id, &order.PaymentId, &order.OrderStatusId, &order.DeliveryDate)
+	if err != nil {
+		return err
+	}
+
+	if updateData.OrderStatus != nil {
+		if *updateData.OrderStatus > 8 && *updateData.OrderStatus < 1 {
+			return errors.New("invalid order status")
+		}
+		order.OrderStatusId = *updateData.OrderStatus
+	}
+
+	if updateData.PaymentStatus != nil {
+		if *updateData.PaymentStatus > 5 && *updateData.PaymentStatus < 1 {
+			return errors.New("invalid payment status")
+		}
+		order.PaymentId = *updateData.PaymentStatus
+	}
+
+	if updateData.DeliveryDate != nil {
+		order.DeliveryDate = *updateData.DeliveryDate
+	}
+
+	updateQuery := `
+        UPDATE orders
+        SET payment_id = ?, order_status_id = ?, delivery_date = ?, updated_at = NOW(), updated_by = ?
+        WHERE id = ?
+    `
+	_, err = r.ExecContext(ctx, updateQuery, order.PaymentId, order.OrderStatusId, order.DeliveryDate, adminId, orderId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r Repository) DeleteOrderItem(ctx context.Context, itemId, adminId int64) error {
+	query := `
+        UPDATE order_items
+        SET deleted_at = NOW(), deleted_by = ?
+        WHERE id = ?
+    `
+	_, err := r.ExecContext(ctx, query, adminId, itemId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r Repository) Delete(ctx context.Context, orderId int64, userId int64) error {

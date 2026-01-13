@@ -280,3 +280,45 @@ func (r *Repository) GetByParentId(ctx context.Context, filter entity.Filter, ca
 	}
 	return list, count, nil
 }
+
+func (r *Repository) GetByCategoryId(ctx context.Context, categoryId int64, filter entity.Filter) ([]param.GetByCategoryId, int64, error) {
+	var list []param.GetByCategoryId
+	count := int64(0)
+	query := fmt.Sprintf(`
+		SELECT
+			p.id,
+			p.name ->> '%s' as param_name,
+			p.status,
+			p.created_at
+ 		FROM category_params cp
+		JOIN params p ON p.id = cp.param_id
+		WHERE %d = ANY(cp.category_id)
+		AND p.deleted_at IS NULL
+	`, *filter.Language, categoryId)
+
+	rows, err := r.QueryContext(ctx, query)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer rows.Close()
+
+	if err := r.ScanRows(ctx, rows, &list); err != nil {
+		return nil, 0, err
+	}
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM category_params cp
+		JOIN params p ON p.id = cp.param_id
+		WHERE ? = ANY(cp.category_id)
+		AND p.deleted_at IS NULL
+		`
+
+	err = r.DB.NewRaw(countQuery, categoryId).Scan(ctx, &count)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, count, nil
+}

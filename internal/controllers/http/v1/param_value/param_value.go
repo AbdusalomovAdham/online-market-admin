@@ -188,11 +188,47 @@ func (ac *Controller) AdminParamValueGetListByParamId(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	paramValues, err := ac.service.ParamValueGetListByParamId(ctx, filter, int(id))
+	paramValues, count, err := ac.service.ParamValueGetListByParamId(ctx, filter, int(id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": paramValues})
+	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": map[string]any{"results": paramValues, "count": count}})
+}
+
+func (ac *Controller) AdminParamValueGetByParamId(c *gin.Context) {
+	var filter entity.Filter
+	paramId := c.Param("id")
+	id, err := strconv.ParseInt(paramId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	search, err := utils.GetQuery(c, "search")
+	if err != nil {
+		return
+	}
+	filter.Search = search
+
+	lang := c.GetHeader("Accept-Language")
+	if lang == "" {
+		lang = "uz"
+		filter.Language = &lang
+	} else {
+		filter.Language = &lang
+	}
+
+	ctx := context.Background()
+	paramValues, count, err := ac.service.ParamValueGetByParamId(ctx, int(id), filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "ok!", "data": map[string]any{
+		"results": paramValues,
+		"total":   count,
+	}})
 }

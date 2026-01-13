@@ -9,9 +9,10 @@ type Create struct {
 
 type Get struct {
 	Id        int64  `json:"id"`
-	Status    bool   `json:"status"`
+	Status    bool   `json:"status" bun:"is_active"`
 	CreatedAt string `json:"created_at"`
 	Name      string `json:"name"`
+	Key       string `json:"key"`
 }
 
 type PaymentStatusById struct {

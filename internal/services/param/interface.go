@@ -11,6 +11,7 @@ type Repository interface {
 	GetList(ctx context.Context, filter entity.Filter) ([]Get, int, error)
 	Delete(ctx context.Context, paramId int64, adminId int64) error
 	Update(ctx context.Context, paramId int64, data UpdateParam, adminId int64) error
+	GetByCategoryId(ctx context.Context, categoryId int64, filter entity.Filter) ([]GetByCategoryId, int64, error)
 }
 
 type Auth interface {

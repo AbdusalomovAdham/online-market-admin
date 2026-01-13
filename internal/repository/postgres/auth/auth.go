@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"main/internal/entity"
+	"main/internal/services/auth"
 
 	"github.com/uptrace/bun"
 )
@@ -16,24 +16,16 @@ func NewRepository(DB *bun.DB) *Repository {
 	return &Repository{DB: DB}
 }
 
-func (r Repository) GetByLogin(ctx context.Context, login string) (string, int64, int, error) {
-	var id int64
-	var role int
-	var password sql.NullString
+func (r Repository) GetByLogin(ctx context.Context, login string) (auth.AdminDetails, error) {
+	var details auth.AdminDetails
+	query := `SELECT id, password, role, first_name, last_name, avatar FROM users WHERE deleted_at IS NULL AND login = ? AND status = true`
 
-	query := `SELECT id, password, role FROM users WHERE deleted_at IS NULL AND login = ? AND status = true`
-
-	err := r.QueryRowContext(ctx, query, login).Scan(&id, &password, &role)
+	err := r.QueryRowContext(ctx, query, login).Scan(&details.Id, &details.Password, &details.Role, &details.FirstName, &details.LastName, &details.Avatar)
 	if err != nil {
-		return "", 0, 0, err
+		return auth.AdminDetails{}, err
 	}
 
-	pw := ""
-	if password.Valid {
-		pw = password.String
-	}
-
-	return pw, id, role, nil
+	return details, nil
 }
 
 func (r Repository) GetById(ctx context.Context, id int) (entity.User, error) {

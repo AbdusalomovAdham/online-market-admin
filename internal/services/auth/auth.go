@@ -22,24 +22,24 @@ func NewService(repo Repository, cache Cache, sendSMS SendSMS, auth Auth) *Servi
 	}
 }
 
-func (s *Service) SignIn(ctx context.Context, data SignIn) (string, error) {
-	password, userId, roleId, err := s.repo.GetByLogin(ctx, data.Login)
+func (s *Service) SignIn(ctx context.Context, data SignIn) (AdminDetails, string, error) {
+	detail, err := s.repo.GetByLogin(ctx, data.Login)
 	if err != nil {
-		return "", err
+		return AdminDetails{}, "", err
 	}
 
-	if password == "" || !s.auth.CheckPasswordHash(data.Password, password) {
-		return "", fmt.Errorf("Error password or login")
+	if detail.Password == "" || !s.auth.CheckPasswordHash(data.Password, detail.Password) {
+		return AdminDetails{}, "", fmt.Errorf("Error password or login")
 	}
 
 	var generateToken auth.GenerateToken
-	generateToken.Id = userId
-	generateToken.Role = roleId
+	generateToken.Id = detail.Id
+	generateToken.Role = detail.Role
 
 	token, err := s.auth.GenerateToken(ctx, generateToken)
 	if err != nil {
-		return "", err
+		return AdminDetails{}, "", err
 	}
 
-	return token, nil
+	return detail, token, nil
 }
